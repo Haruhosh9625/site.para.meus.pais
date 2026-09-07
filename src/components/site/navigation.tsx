@@ -6,6 +6,7 @@ import { useState } from "react";
 import { Logo } from "./logo";
 import { useCart, useSession, useStoreSettings } from "@/components/providers";
 import { Badge, Button, cx } from "@/components/ui";
+import { formatPhone } from "@/lib/format";
 
 /* ------------------------------- ícones ---------------------------------- */
 
@@ -340,7 +341,7 @@ export function SiteFooter() {
               <li>
                 Telefone:{" "}
                 <a className="underline underline-offset-2" href={`tel:${settings.phone}`}>
-                  {settings.phone}
+                  {formatPhone(settings.phone)}
                 </a>
               </li>
             )}
@@ -353,7 +354,7 @@ export function SiteFooter() {
                   rel="noopener noreferrer"
                   target="_blank"
                 >
-                  {settings.whatsapp}
+                  {formatPhone(settings.whatsapp)}
                 </a>
               </li>
             )}

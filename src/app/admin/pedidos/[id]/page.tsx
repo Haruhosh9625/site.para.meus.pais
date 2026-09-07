@@ -181,9 +181,11 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
         </div>
         <div className="flex flex-col items-end gap-2">
           <OrderStatusBadge status={order.status} />
-          <Badge tone={order.paymentStatus === "PAID" ? "success" : "warning"}>
-            {PAYMENT_STATUS_LABEL[order.paymentStatus]}
-          </Badge>
+          {order.status !== "AWAITING_PAYMENT" && (
+            <Badge tone={order.paymentStatus === "PAID" ? "success" : "warning"}>
+              {PAYMENT_STATUS_LABEL[order.paymentStatus]}
+            </Badge>
+          )}
           <p className="text-2xl font-extrabold tabular-nums">{formatCents(order.totalCents)}</p>
         </div>
       </header>

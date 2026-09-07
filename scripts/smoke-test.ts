@@ -820,6 +820,42 @@ async function main() {
 
     // ------------------------- loja fechada bloqueia ------------------------
     await clearRateLimits();
+
+    /**
+     * O estado aberto/fechado precisa aparecer igual em TODAS as páginas.
+     *
+     * Já aconteceu de a home dizer "Aberto agora" e o carrinho — que é um
+     * Client Component e por isso era pré-renderizado no build — servir um
+     * HTML congelado dizendo "FECHADO", com o botão de finalizar desabilitado.
+     * Estas asserções comparam o HTML entregue em várias rotas.
+     */
+    const paginasComStatus = ["/", "/carrinho", "/checkout", "/meus-pedidos"];
+
+    const closeForHtml = await admin.request("/api/admin/settings", {
+      method: "PUT",
+      body: { ...base, deliveryFeeCents: originalFee, minOrderCents: 0, useManualSwitch: true, manualOpen: false },
+    });
+    check("Admin fecha a loja para o teste de coerência", closeForHtml.ok);
+
+    for (const path of paginasComStatus) {
+      const html = await fetch(`${BASE_URL}${path}`).then((r) => r.text());
+      check(`Loja fechada aparece em ${path}`, html.includes("FECHADO"), "HTML sem o aviso");
+    }
+
+    const abertoDeNovo = await admin.request("/api/admin/settings", {
+      method: "PUT",
+      body: { ...base, deliveryFeeCents: originalFee, minOrderCents: 0, useManualSwitch: true, manualOpen: true },
+    });
+    check("Admin reabre para o teste de coerência", abertoDeNovo.ok);
+
+    for (const path of paginasComStatus) {
+      const html = await fetch(`${BASE_URL}${path}`).then((r) => r.text());
+      check(
+        `Loja aberta não mostra aviso de fechado em ${path}`,
+        !html.includes("FECHADO"),
+        "HTML com aviso de fechado obsoleto",
+      );
+    }
     const closeStore = await admin.request("/api/admin/settings", {
       method: "PUT",
       body: { ...base, deliveryFeeCents: originalFee, minOrderCents: 0, useManualSwitch: true, manualOpen: false },

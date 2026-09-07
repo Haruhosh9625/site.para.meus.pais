@@ -23,6 +23,18 @@ export const metadata: Metadata = {
   robots: { index: true, follow: true },
 };
 
+/**
+ * O layout raiz lê o estado AO VIVO da loja (aberto/fechado, telefone,
+ * endereço, horários) do banco. Sem isto, o Next pré-renderiza no build as
+ * páginas que são Client Components — /carrinho, /checkout, /login,
+ * /minha-conta… — e congela esse estado no HTML.
+ *
+ * O sintoma era grave: a home dizia "Aberto agora" e o carrinho, aberto
+ * segundos depois, dizia "FECHADO" — com o botão de finalizar desabilitado,
+ * matando o pedido de um cliente real.
+ */
+export const dynamic = "force-dynamic";
+
 export const viewport: Viewport = {
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "#ffffff" },

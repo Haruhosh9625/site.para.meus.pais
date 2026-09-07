@@ -169,9 +169,16 @@ export default function PedidoPage({ params }: { params: Promise<{ id: string }>
         </div>
         <div className="flex flex-col items-end gap-2">
           <OrderStatusBadge status={order.status} />
-          <Badge tone={order.paymentStatus === "PAID" ? "success" : "warning"}>
-            {PAYMENT_STATUS_LABEL[order.paymentStatus]}
-          </Badge>
+          {/*
+            Enquanto o pedido está em "Aguardando pagamento", o selo de
+            pagamento não acrescenta nada — os dois dizem a mesma coisa.
+            Só aparece quando informa algo novo (pago, reembolsado, falhou).
+          */}
+          {order.status !== "AWAITING_PAYMENT" && (
+            <Badge tone={order.paymentStatus === "PAID" ? "success" : "warning"}>
+              {PAYMENT_STATUS_LABEL[order.paymentStatus]}
+            </Badge>
+          )}
         </div>
       </div>
 

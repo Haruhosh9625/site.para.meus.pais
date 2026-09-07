@@ -94,6 +94,25 @@ function StoreSettingsProvider({
       .catch(() => undefined);
   }, []);
 
+  /**
+   * Revalida quando a pessoa volta para a aba.
+   *
+   * Alguém pode montar o carrinho às 22h50, deixar o celular de lado e voltar
+   * às 23h10 — quando a loja já fechou. Sem isto, a tela continuaria dizendo
+   * "Aberto agora" e o pedido só falharia no envio.
+   */
+  useEffect(() => {
+    const revalidar = () => {
+      if (document.visibilityState === "visible") reload();
+    };
+    document.addEventListener("visibilitychange", revalidar);
+    window.addEventListener("focus", revalidar);
+    return () => {
+      document.removeEventListener("visibilitychange", revalidar);
+      window.removeEventListener("focus", revalidar);
+    };
+  }, [reload]);
+
   const value = useMemo(() => ({ settings, reload }), [settings, reload]);
   return <SettingsContext.Provider value={value}>{children}</SettingsContext.Provider>;
 }

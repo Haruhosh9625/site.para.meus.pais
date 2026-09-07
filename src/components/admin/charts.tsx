@@ -102,8 +102,12 @@ export function BarChart({
   // Porcentagem dentro de uma coluna flex de altura automática resolve para
   // zero — as barras simplesmente não apareciam. Reservamos espaço para o
   // rótulo do eixo e o valor que surge no hover.
-  const AXIS_SPACE = 34;
+  const AXIS_SPACE = 20;
   const track = Math.max(20, height - AXIS_SPACE);
+
+  // Com muitos dias, mostrar todo rótulo os faz colidir. Mantemos um a cada
+  // N — e sempre o último, que é o dia de hoje.
+  const passo = data.length > 20 ? 5 : data.length > 12 ? 2 : 1;
 
   if (data.length === 0) {
     return <p className="muted py-8 text-center text-sm">Sem dados no período.</p>;
@@ -114,7 +118,12 @@ export function BarChart({
       <figcaption className="sr-only">{title}</figcaption>
 
       <div
-        className="flex items-end gap-1 overflow-x-auto pb-1"
+        className={cx(
+          "flex items-end overflow-x-auto pb-1",
+          // Com 30 colunas, `gap-1` (4px cada) somava 116px e fazia o gráfico
+          // estourar o cartão, escondendo justamente a coluna de hoje.
+          data.length > 20 ? "gap-px" : data.length > 12 ? "gap-0.5" : "gap-1",
+        )}
         style={{ height }}
         role="presentation"
       >
@@ -123,9 +132,30 @@ export function BarChart({
           return (
             <div
               key={`${point.label}-${index}`}
-              className="group flex min-w-6 flex-1 flex-col items-center justify-end gap-1"
+              // Largura mínima pequena: com 30 dias, `min-w-6` somava mais que
+              // a largura do cartão e a última coluna — justamente a de hoje,
+              // onde está o faturamento — ficava cortada fora da vista.
+              className="group relative flex min-w-1.5 flex-1 flex-col items-center justify-end gap-1"
             >
-              <span className="text-[10px] font-semibold tabular-nums opacity-0 transition-opacity group-hover:opacity-100">
+              {/*
+                Fora do fluxo (absolute): em flow, o texto "R$ 659,00" — mesmo
+                invisível — alargava a coluna e empurrava o gráfico para fora
+                da área visível.
+              */}
+              <span
+                className={cx(
+                  "pointer-events-none absolute bottom-full mb-1 rounded bg-coal-900 px-1.5 py-0.5",
+                  "text-[10px] font-semibold tabular-nums whitespace-nowrap text-white opacity-0",
+                  "transition-opacity group-hover:opacity-100 dark:bg-coal-100 dark:text-coal-900",
+                  // Nas pontas o balão é ancorado para dentro: centralizado,
+                  // ele transbordaria o cartão e criava barra de rolagem.
+                  index === 0
+                    ? "left-0"
+                    : index === data.length - 1
+                      ? "right-0"
+                      : "left-1/2 -translate-x-1/2",
+                )}
+              >
                 {point.value > 0 ? valueFormatter(point.value) : ""}
               </span>
               <div
@@ -138,8 +168,8 @@ export function BarChart({
                 }}
                 title={`${point.label}: ${valueFormatter(point.value)}`}
               />
-              <span className="muted max-w-full truncate text-[10px] whitespace-nowrap">
-                {point.label}
+              <span className="muted h-3 max-w-full truncate text-[10px] whitespace-nowrap">
+                {index % passo === 0 || index === data.length - 1 ? point.label : ""}
               </span>
             </div>
           );

@@ -18,7 +18,10 @@ export const ORDER_STATUS_LABEL: Record<OrderStatus, string> = {
 };
 
 export const PAYMENT_STATUS_LABEL: Record<PaymentStatus, string> = {
-  PENDING: "Aguardando pagamento",
+  // "Pagamento pendente", e não "Aguardando pagamento": este último é o
+  // rótulo do STATUS DO PEDIDO, e ver os dois textos idênticos lado a lado
+  // parecia falha de renderização.
+  PENDING: "Pagamento pendente",
   PAID: "Pago",
   FAILED: "Falhou",
   REFUNDED: "Reembolsado",

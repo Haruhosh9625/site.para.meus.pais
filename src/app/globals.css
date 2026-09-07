@@ -1,0 +1,182 @@
+@import "tailwindcss";
+
+/* ---------------------------------------------------------------------------
+   DS Espetos — sistema visual
+   Paleta de brasa: carvão escuro, laranja de fogo e creme quente.
+   Os tokens abaixo viram utilitários do Tailwind (bg-brand, text-ember...).
+   --------------------------------------------------------------------------- */
+@theme {
+  --color-brand-50: #fef4ee;
+  --color-brand-100: #fde5d6;
+  --color-brand-200: #fac7ad;
+  --color-brand-300: #f6a179;
+  --color-brand-400: #f07443;
+  --color-brand-500: #e05320;
+  --color-brand-600: #cc3f16;
+  --color-brand-700: #a92f14;
+  --color-brand-800: #872818;
+  --color-brand-900: #6e2417;
+
+  --color-ember-400: #f7b955;
+  --color-ember-500: #e9a13c;
+  --color-ember-600: #c9801f;
+
+  --color-coal-50: #f7f5f3;
+  --color-coal-100: #e9e5e0;
+  --color-coal-200: #d3ccc4;
+  --color-coal-300: #b0a599;
+  --color-coal-400: #8a7d6f;
+  --color-coal-500: #6d6154;
+  --color-coal-600: #574c42;
+  --color-coal-700: #453d36;
+  --color-coal-800: #2c2622;
+  --color-coal-900: #1b1714;
+  --color-coal-950: #100e0c;
+
+  --font-sans:
+    ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial,
+    "Noto Sans", sans-serif;
+
+  --radius-card: 1rem;
+  --shadow-soft: 0 1px 2px rgb(27 23 20 / 0.06), 0 8px 24px -12px rgb(27 23 20 / 0.18);
+  --shadow-lift: 0 2px 4px rgb(27 23 20 / 0.08), 0 16px 40px -18px rgb(27 23 20 / 0.32);
+}
+
+/* ------------------------------- superfícies ------------------------------ */
+:root {
+  --surface: #ffffff;
+  --surface-muted: #faf7f4;
+  --surface-sunken: #f2ece6;
+  --border: #e7e0d8;
+  --text: #1b1714;
+  --text-muted: #6d6154;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --surface: #1b1714;
+    --surface-muted: #221d19;
+    --surface-sunken: #100e0c;
+    --border: #352e28;
+    --text: #f7f5f3;
+    --text-muted: #b0a599;
+    color-scheme: dark;
+  }
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background-color: var(--surface-muted);
+    color: var(--text);
+    font-family: var(--font-sans);
+    /* Espaço para a barra de navegação inferior no celular. */
+    padding-bottom: env(safe-area-inset-bottom);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Foco sempre visível: navegação por teclado precisa enxergar onde está. */
+  :focus-visible {
+    outline: 2px solid var(--color-brand-500);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  /* Respeita quem pediu menos animação no sistema. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+@layer components {
+  .surface {
+    background-color: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-card);
+  }
+
+  .muted {
+    color: var(--text-muted);
+  }
+
+  /* Área mínima de toque de 44px — dedo em tela de celular. */
+  .tap {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  .skeleton {
+    background: linear-gradient(
+      90deg,
+      var(--surface-sunken) 25%,
+      var(--surface-muted) 37%,
+      var(--surface-sunken) 63%
+    );
+    background-size: 400% 100%;
+    animation: shimmer 1.4s ease infinite;
+  }
+
+  @keyframes shimmer {
+    0% {
+      background-position: 100% 50%;
+    }
+    100% {
+      background-position: 0 50%;
+    }
+  }
+
+  .fade-in {
+    animation: fadeIn 0.24s ease-out;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+}
+
+/* ------------------------------- impressão -------------------------------- */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+
+  body {
+    background: #fff;
+    color: #000;
+    padding: 0;
+  }
+
+  .print-sheet {
+    box-shadow: none !important;
+    border: none !important;
+    max-width: 100% !important;
+    padding: 0 !important;
+  }
+
+  @page {
+    margin: 12mm;
+  }
+}

@@ -6,7 +6,7 @@ import type { DeliveryType, OrderStatus, PaymentMethod, PaymentStatus } from "@p
 import { api, errorMessage } from "@/lib/api-client";
 import { useSession } from "@/components/providers";
 import { formatCents } from "@/lib/money";
-import { formatDateTime, formatRelative } from "@/lib/format";
+import { formatDateTime, formatRelative, formatTime } from "@/lib/format";
 import { DELIVERY_TYPE_LABEL, PAYMENT_METHOD_LABEL } from "@/lib/constants";
 import { OrderStatusBadge } from "@/components/site/order-status";
 import { Badge, Button, EmptyState, ErrorState, Skeleton } from "@/components/ui";
@@ -19,6 +19,8 @@ type OrderRow = {
   paymentMethod: PaymentMethod;
   deliveryType: DeliveryType;
   totalCents: number;
+  /** Horário combinado. Nulo nos pedidos feitos antes do agendamento. */
+  scheduledFor: string | null;
   createdAt: string;
   items: Array<{ id: string; productNameSnapshot: string; quantity: number }>;
 };
@@ -97,9 +99,20 @@ export default function MeusPedidosPage() {
                   <p className="font-bold tabular-nums">
                     #{String(order.number).padStart(6, "0")}
                   </p>
-                  <p className="muted text-xs">
-                    {formatDateTime(order.createdAt)} · {formatRelative(order.createdAt)}
-                  </p>
+                  {order.scheduledFor ? (
+                    <p className="text-xs font-semibold">
+                      {order.deliveryType === "PICKUP" ? "Retirada" : "Entrega"} às{" "}
+                      <span className="tabular-nums">{formatTime(order.scheduledFor)}</span>
+                      <span className="muted font-normal">
+                        {" "}
+                        · {formatDateTime(order.scheduledFor)}
+                      </span>
+                    </p>
+                  ) : (
+                    <p className="muted text-xs">
+                      {formatDateTime(order.createdAt)} · {formatRelative(order.createdAt)}
+                    </p>
+                  )}
                 </div>
                 <OrderStatusBadge status={order.status} />
               </div>

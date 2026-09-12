@@ -14,17 +14,18 @@ painel administrativo. Pensado primeiro para o celular.
 4. [Configuração do `.env`](#configuração-do-env)
 5. [Banco de dados](#banco-de-dados)
 6. [Administrador](#administrador)
-7. [Gateway de pagamento](#gateway-de-pagamento)
-8. [Webhooks](#webhooks)
-9. [Rodando localmente](#rodando-localmente)
-10. [Testes](#testes)
-11. [Deploy](#deploy)
-12. [Backup e restauração](#backup-e-restauração)
-13. [Estrutura do projeto](#estrutura-do-projeto)
-14. [Rotas de API](#rotas-de-api)
-15. [Como o dinheiro é tratado](#como-o-dinheiro-é-tratado)
-16. [Segurança](#segurança)
-17. [Como estender](#como-estender)
+7. [Agendamento de retirada](#agendamento-de-retirada)
+8. [Gateway de pagamento](#gateway-de-pagamento)
+9. [Webhooks](#webhooks)
+10. [Rodando localmente](#rodando-localmente)
+11. [Testes](#testes)
+12. [Deploy](#deploy)
+13. [Backup e restauração](#backup-e-restauração)
+14. [Estrutura do projeto](#estrutura-do-projeto)
+15. [Rotas de API](#rotas-de-api)
+16. [Como o dinheiro é tratado](#como-o-dinheiro-é-tratado)
+17. [Segurança](#segurança)
+18. [Como estender](#como-estender)
 
 ---
 
@@ -38,7 +39,12 @@ painel administrativo. Pensado primeiro para o celular.
   desconto e total — **tudo recalculado no servidor**.
 - Cadastro, login, logout, recuperação e troca de senha.
 - Endereços salvos, edição de dados pessoais, histórico de pedidos.
-- Checkout em uma página: entrega ou retirada, PIX / cartão / dinheiro,
+- **Agendamento da retirada**: o cliente digita a hora em que vai buscar
+  (hora livre), com sugestões de horários que ainda têm vaga; o servidor
+  confere expediente, antecedência mínima e lotação da janela.
+- Remarcação da retirada pelo próprio cliente, enquanto o preparo não
+  começou.
+- Checkout em uma página: horário da retirada, PIX / cartão / dinheiro,
   cálculo de troco, observações.
 - Pagamento PIX com código copia-e-cola (BR Code EMV válido).
 - Acompanhamento do pedido com atualização automática a cada 10 s.
@@ -48,14 +54,19 @@ painel administrativo. Pensado primeiro para o celular.
 
 - Dashboard com faturamento, pedidos, ticket médio, fila de produção,
   gráfico de 14 dias, divisão por forma de pagamento e mais vendidos.
+- **Agenda do dia** (`/admin/agenda`): pedidos agrupados por janela de
+  horário, com carga de cada faixa, aviso de janela lotada e recarga
+  automática — é a tela que fica aberta no balcão.
 - Gestão de pedidos com filtros (período, status, pagamento, recebimento),
   busca, mudança de status, cancelamento e impressão.
 - CRUD do cardápio, com disponibilidade e upload de foto.
 - Clientes com métricas de compra (sem nunca expor senha).
 - Financeiro por período, com bruto, líquido, cancelamentos e reembolsos.
 - Cupons de desconto funcionais.
-- Configurações: horários, aberto/fechado, taxa de entrega, pedido mínimo,
-  bairros atendidos, tempos e formas de pagamento aceitas.
+- Configurações: horários, aberto/fechado, **regras de agendamento**
+  (antecedência mínima, tamanho da janela, pedidos por janela, dias de
+  antecedência), taxa de entrega, pedido mínimo, bairros atendidos, tempos
+  e formas de pagamento aceitas.
 
 **Infra**
 
@@ -209,6 +220,66 @@ alterar a senha. Para redefinir a senha de um admin existente, use
 
 > Depois do primeiro acesso, troque a senha em **Minha conta → Senha**. Isso
 > encerra todas as outras sessões abertas.
+
+---
+
+## Agendamento de retirada
+
+A DS Espetos **ainda não entrega**: todo pedido é retirada com hora marcada.
+O cliente digita a hora em que vai buscar e a cozinha prepara para aquele
+horário.
+
+**Como a hora é escolhida.** Hora livre: o campo aceita qualquer horário.
+A tela oferece as próximas janelas com vaga como atalho, mas nada impede
+digitar 19:07. Quem decide se o horário vale é sempre o servidor, em
+`src/server/services/scheduling.ts` — a tela só adianta a resposta para o
+cliente não montar o pedido inteiro e tomar erro no final.
+
+**As três perguntas de cada horário:**
+
+1. cai dentro do expediente daquele dia? (inclusive quando o expediente
+   atravessa a madrugada — 18:00 às 02:00);
+2. respeita a antecedência mínima? (a cozinha precisa de tempo);
+3. ainda há vaga na janela?
+
+**Configuração** (painel, em `/admin/configuracoes` → *Agendamento de
+retirada*):
+
+| Campo                     | O que faz                                          | Padrão |
+| ------------------------- | -------------------------------------------------- | ------ |
+| Antecedência mínima (min) | Tempo entre agendar e retirar                       | 30     |
+| Tamanho da janela (min)   | De quanto em quanto tempo a agenda é dividida       | 30     |
+| Pedidos por janela        | Quantos cabem em cada janela — **0 = sem limite**   | 0      |
+| Dias de antecedência      | Até quando dá para agendar — **0 = somente hoje**   | 0      |
+
+As janelas são ancoradas na meia-noite: com 30 minutos, elas são 18:00,
+18:30, 19:00... Pedidos **cancelados não ocupam vaga**.
+
+**Fluxo de status:**
+
+```
+AWAITING_PAYMENT → PAYMENT_CONFIRMED → SCHEDULED → PREPARING → READY → PICKED_UP
+```
+
+O pagamento confirmado é o que garante o horário: o pedido vai direto a
+`SCHEDULED` e espera ali a hora marcada. `OUT_FOR_DELIVERY` e `DELIVERED`
+continuam no enum para o dia em que a entrega for ligada.
+
+**Quando começarem a entregar**, é uma caixa de seleção em
+`/admin/configuracoes` (*Aceitar entrega*). As telas do cliente voltam a
+oferecer a escolha entre entrega e retirada sozinhas — nenhuma linha de
+código muda.
+
+### Fuso horário
+
+O horário de funcionamento e o agendamento são **hora de balcão**: "18:00"
+significa 18:00 na loja. O servidor fixa `TZ` (padrão
+`America/Sao_Paulo`, em `src/server/env.ts`) para que a conta seja feita
+nesse fuso mesmo rodando em uma nuvem que usa UTC. O cliente envia apenas
+`"19:30"` e o servidor resolve o dia — assim um celular configurado em
+outro fuso não agenda uma hora que não existe no balcão.
+
+Se a loja estiver em outro fuso, declare `TZ` no `.env`.
 
 ---
 
@@ -366,13 +437,16 @@ npm run dev
 npm run test:e2e
 ```
 
-Cobre 162 verificações, entre elas:
+Cobre 200 verificações, entre elas:
 
 - cardápio, preços do seed e o Completo como item independente;
 - cálculo no servidor, incluindo a tentativa de enviar preço adulterado;
 - cadastro, login, logout, hash da senha, CSRF e checagem de origem;
 - controle de acesso: cliente comum recebe 403 nas rotas de admin;
 - criação de pedido, idempotência de clique duplo, cálculo de troco;
+- agendamento: horário fora do expediente recusado, antecedência mínima,
+  horizonte de dias, janela lotada, vaga devolvida ao cancelar e
+  remarcação pelo próprio cliente;
 - geração do PIX, webhook com assinatura errada (recusado) e com
   assinatura correta (confirma e avança o status);
 - reenvio do mesmo evento de webhook sem duplicar pagamento;
@@ -384,7 +458,9 @@ Cobre 162 verificações, entre elas:
 - renderização real das páginas e do dashboard.
 
 O teste é idempotente: ele limpa os dados que cria e restaura as
-configurações que altera.
+configurações que altera. Ele também lê o fuso da loja em `/api/schedule` e
+envia os horários nesse fuso — de propósito, porque é assim que se comporta
+um cliente cujo celular está em outro fuso.
 
 ---
 
@@ -498,7 +574,7 @@ prisma/
 
 scripts/
   create-admin.ts          Criação segura do administrador
-  smoke-test.ts            Teste end-to-end (162 verificações)
+  smoke-test.ts            Teste end-to-end (200 verificações)
 
 src/
   middleware.ts            Primeiro filtro das páginas /admin
@@ -525,6 +601,7 @@ src/
     services/
       pricing.ts           MOTOR DE PREÇOS — a fonte da verdade dos valores
       orders.ts            Criação, máquina de estados, cancelamento
+      scheduling.ts        AGENDA — única autoridade sobre "esse horário pode?"
       payments.ts          Cobrança, confirmação, processamento de webhook
       settings.ts          Configurações e cálculo de aberto/fechado
       notifications.ts     Notificações e adaptadores de canal
@@ -540,7 +617,8 @@ src/
   components/
     ui/                    Button, Field, Input, Badge, estados vazios…
     providers/             Sessão, configurações, carrinho, avisos
-    site/                  Logo, navegação, cartão de produto, status
+    site/                  Logo, navegação, cartão de produto, status,
+                           escolha do horário de retirada
     admin/                 Estrutura do painel e gráficos SVG
 
   app/
@@ -577,6 +655,8 @@ do cookie `ds_csrf` (o `src/lib/api-client.ts` já faz isso).
 | `GET`  | `/api/products`         | Cardápio por categoria                      |
 | `POST` | `/api/cart/quote`       | **Cotação do carrinho** (preços do servidor) |
 | `POST` | `/api/coupons/validate` | Valida um cupom                             |
+| `GET`  | `/api/schedule`         | Regras de agendamento e horários com vaga   |
+| `POST` | `/api/schedule/check`   | Confere um horário sem criar pedido         |
 
 ### Autenticação
 
@@ -611,6 +691,7 @@ do cookie `ds_csrf` (o `src/lib/api-client.ts` já faz isso).
 | `GET`  | `/api/orders/{id}`            | Detalhe e status                   |
 | `POST` | `/api/orders/{id}/payment`    | Gera nova cobrança                 |
 | `POST` | `/api/orders/{id}/cancel`     | Cancela (antes do preparo)         |
+| `POST` | `/api/orders/{id}/reschedule` | Remarca a retirada                 |
 
 ### Pagamentos
 
@@ -623,6 +704,7 @@ do cookie `ds_csrf` (o `src/lib/api-client.ts` já faz isso).
 | Método   | Rota                                        | O que faz                  |
 | -------- | ------------------------------------------- | -------------------------- |
 | `GET`    | `/api/admin/dashboard`                      | Métricas do dashboard      |
+| `GET`    | `/api/admin/agenda`                         | Agenda do dia por janela   |
 | `GET`    | `/api/admin/orders`                         | Pedidos com filtros e busca |
 | `GET`    | `/api/admin/orders/{id}`                    | Detalhe e transições válidas |
 | `POST`   | `/api/admin/orders/{id}/status`             | Altera o status            |

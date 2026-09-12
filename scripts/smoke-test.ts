@@ -48,6 +48,40 @@ function section(title: string) {
   console.log(`\n\x1b[1m${title}\x1b[0m`);
 }
 
+/**
+ * Fuso da loja, lido de /api/schedule no começo da rodada.
+ *
+ * O processo do teste pode rodar em UTC enquanto o servidor roda em horário
+ * de Brasília — é justamente o caso de um cliente com o celular em outro
+ * fuso. Toda hora que o teste envia ou compara passa por aqui, de modo que
+ * "HH:MM" significa sempre hora de balcão.
+ */
+let fusoDaLoja = "America/Sao_Paulo";
+
+/** Instante -> "HH:MM" no fuso da loja. */
+function horaNaLoja(value: Date | string): string {
+  const date = typeof value === "string" ? new Date(value) : value;
+  return new Intl.DateTimeFormat("pt-BR", {
+    timeZone: fusoDaLoja,
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(date);
+}
+
+/**
+ * Hora de retirada usada nos pedidos do teste, em "HH:MM".
+ *
+ * A loja trabalha por agendamento, então TODO pedido precisa de um horário.
+ * O teste abre o expediente das 00:00 às 23:59 nos sete dias e zera a
+ * antecedência mínima, de modo que "agora + 20 minutos" sempre valha — mesmo
+ * quando a rodada acontece perto da meia-noite, porque nesse caso o horário
+ * cai no expediente do dia seguinte e o horizonte do teste é de 1 dia.
+ */
+function horarioDeRetirada(minutosAdiante = 20): string {
+  return horaNaLoja(new Date(Date.now() + minutosAdiante * 60000));
+}
+
 /** Cliente HTTP com cookie jar — imita um navegador de verdade. */
 class Client {
   private cookies = new Map<string, string>();
@@ -153,14 +187,48 @@ async function main() {
   // A loja precisa estar aberta para o teste criar pedidos, independentemente
   // do dia e da hora em que o teste roda. Guardamos o estado original e o
   // restauramos no fim.
+  //
+  // Como a loja trabalha por AGENDAMENTO, o expediente também precisa aceitar
+  // qualquer hora: abrimos das 00:00 às 23:59 nos sete dias, zeramos a
+  // antecedência mínima e damos 1 dia de horizonte. Assim "agora + 20 min"
+  // sempre é um horário válido — inclusive quando a rodada cai às 23:55 e o
+  // horário resolve para a madrugada seguinte.
   const originalStore = await prisma.settings.findUnique({
     where: { id: "default" },
-    select: { useManualSwitch: true, manualOpen: true },
+    select: {
+      useManualSwitch: true,
+      manualOpen: true,
+      openingHours: true,
+      minLeadMinutes: true,
+      slotWindowMinutes: true,
+      slotCapacity: true,
+      scheduleHorizonDays: true,
+    },
   });
   await prisma.settings.update({
     where: { id: "default" },
-    data: { useManualSwitch: true, manualOpen: true },
+    data: {
+      useManualSwitch: true,
+      manualOpen: true,
+      openingHours: Array.from({ length: 7 }, (_, weekday) => ({
+        weekday,
+        open: "00:00",
+        close: "23:59",
+        closed: false,
+      })),
+      minLeadMinutes: 0,
+      slotWindowMinutes: 30,
+      slotCapacity: 0,
+      scheduleHorizonDays: 1,
+    },
   });
+
+  // O fuso precisa ser conhecido antes do primeiro horário calculado.
+  const fusoResposta = await fetch(`${BASE_URL}/api/schedule`)
+    .then((r) => r.json() as Promise<{ data?: { rules?: { timezone?: string } } }>)
+    .catch(() => null);
+  fusoDaLoja = fusoResposta?.data?.rules?.timezone ?? fusoDaLoja;
+  console.log(`Fuso da loja: ${fusoDaLoja}\n`);
 
   await clearRateLimits();
 
@@ -374,6 +442,7 @@ async function main() {
     deliveryType: "PICKUP" as const,
     paymentMethod: "PIX" as const,
     notes: "Teste automatizado",
+    scheduledFor: horarioDeRetirada(),
     idempotencyKey,
   };
 
@@ -385,6 +454,7 @@ async function main() {
       paymentStatus: string;
       subtotalCents: number;
       totalCents: number;
+      scheduledFor: string | null;
       items: Array<{ productNameSnapshot: string; unitPriceCents: number; quantity: number; subtotalCents: number }>;
     };
     payment: { id: string; pixQrCode: string | null; status: string } | null;
@@ -477,12 +547,24 @@ async function main() {
     check("Webhook processa o pagamento", webhookBody.handled === true);
 
     const afterWebhook = await customer.request<{
-      order: { paymentStatus: string; status: string; paidAt: string | null };
+      order: {
+        paymentStatus: string;
+        status: string;
+        paidAt: string | null;
+        statusHistory: Array<{ to: string }>;
+      };
     }>(`/api/orders/${order?.id}`);
     check("Pagamento fica PAID após o webhook", afterWebhook.data?.order.paymentStatus === "PAID");
+    // Pagamento confirmado é o que garante o horário: o pedido vai direto a
+    // AGENDADO, passando por PAYMENT_CONFIRMED e deixando os dois no histórico.
     check(
-      "Pedido avança para PAYMENT_CONFIRMED automaticamente",
-      afterWebhook.data?.order.status === "PAYMENT_CONFIRMED",
+      "Pedido pago avança para SCHEDULED automaticamente",
+      afterWebhook.data?.order.status === "SCHEDULED",
+      afterWebhook.data?.order.status,
+    );
+    check(
+      "Histórico registra a confirmação do pagamento",
+      afterWebhook.data?.order.statusHistory.some((entry) => entry.to === "PAYMENT_CONFIRMED") === true,
     );
     check("Data do pagamento é registrada", Boolean(afterWebhook.data?.order.paidAt));
 
@@ -518,6 +600,267 @@ async function main() {
     });
     check("Mudança de status feita pelo sistema também é auditada", statusAudit !== null);
   }
+
+  // ============================== agendamento ===============================
+  section("Agendamento da retirada");
+  await clearRateLimits();
+
+  type ScheduleRules = {
+    earliest: string | null;
+    latest: string | null;
+    minLeadMinutes: number;
+    slotWindowMinutes: number;
+    slotCapacity: number;
+    horizonDays: number;
+    closedToday: boolean;
+    timezone: string;
+    suggestions: Array<{ time: string; remaining: number | null }>;
+  };
+  type CheckResult = { valid: boolean; reason?: string; window?: { taken: number; capacity: number } };
+
+  /** Ajusta as regras de agendamento direto no banco (sem passar pelo painel). */
+  async function setScheduleRules(data: {
+    minLeadMinutes?: number;
+    slotWindowMinutes?: number;
+    slotCapacity?: number;
+    scheduleHorizonDays?: number;
+    openingHours?: Array<{ weekday: number; open: string; close: string; closed: boolean }>;
+  }) {
+    await prisma.settings.update({
+      where: { id: "default" },
+      data: { ...data, openingHours: (data.openingHours ?? undefined) as never },
+    });
+  }
+
+  /** Volta às regras usadas pelo resto do teste: tudo aberto, sem limite. */
+  async function resetScheduleRules() {
+    await setScheduleRules({
+      minLeadMinutes: 0,
+      slotWindowMinutes: 30,
+      slotCapacity: 0,
+      scheduleHorizonDays: 1,
+      openingHours: Array.from({ length: 7 }, (_, weekday) => ({
+        weekday,
+        open: "00:00",
+        close: "23:59",
+        closed: false,
+      })),
+    });
+  }
+
+  const rules = await anonymous.request<{ rules: ScheduleRules }>("/api/schedule");
+  check("Regras de agendamento são públicas", rules.ok, rules.error?.message);
+  check("Existe um primeiro horário possível", Boolean(rules.data?.rules.earliest));
+  check("Existe um último horário do expediente", Boolean(rules.data?.rules.latest));
+  check(
+    "Regras informam o fuso da loja",
+    (rules.data?.rules.timezone ?? "").includes("/"),
+    rules.data?.rules.timezone,
+  );
+  check(
+    "Tela recebe sugestões de horário com vaga",
+    (rules.data?.rules.suggestions.length ?? 0) > 0,
+    `${rules.data?.rules.suggestions.length}`,
+  );
+
+  // O pedido criado antes guardou o horário combinado.
+  check("Pedido guarda o horário da retirada", Boolean(order?.scheduledFor), `${order?.scheduledFor}`);
+  check(
+    "Horário guardado é o que o cliente escolheu",
+    order?.scheduledFor ? horaNaLoja(order.scheduledFor) === orderPayload.scheduledFor : false,
+    `${order?.scheduledFor} vs ${orderPayload.scheduledFor}`,
+  );
+
+  // --------------------------- horário válido -------------------------------
+  const primeiroHorario = rules.data?.rules.suggestions[0]?.time ?? horarioDeRetirada();
+  const okCheck = await customer.request<CheckResult>("/api/schedule/check", {
+    body: { scheduledFor: primeiroHorario },
+  });
+  check("Horário sugerido é aprovado", okCheck.data?.valid === true, okCheck.data?.reason);
+
+  const lixo = await customer.request<CheckResult>("/api/schedule/check", {
+    body: { scheduledFor: "25:99" },
+  });
+  check("Horário impossível é rejeitado", !lixo.ok || lixo.data?.valid === false);
+
+  // -------------------------- antecedência mínima ---------------------------
+  await setScheduleRules({ minLeadMinutes: 45, scheduleHorizonDays: 0 });
+
+  const cedoDemais = await customer.request<CheckResult>("/api/schedule/check", {
+    body: { scheduledFor: horarioDeRetirada(5) },
+  });
+  check("Horário sem antecedência é recusado", cedoDemais.data?.valid === false, cedoDemais.data?.reason);
+  check(
+    "Mensagem explica a antecedência mínima",
+    (cedoDemais.data?.reason ?? "").includes("45"),
+    cedoDemais.data?.reason,
+  );
+
+  const semAntecedencia = await customer.request("/api/orders", {
+    body: {
+      items: [{ productId: espetoCarne.id, quantity: 2 }],
+      deliveryType: "PICKUP",
+      paymentMethod: "PIX",
+      scheduledFor: horarioDeRetirada(5),
+      idempotencyKey: `lead-${stamp}`,
+    },
+  });
+  check("Pedido sem antecedência é recusado no servidor", !semAntecedencia.ok);
+
+  // ------------------------------- horizonte --------------------------------
+  const amanha = new Date(Date.now() + 26 * 3600 * 1000);
+  const amanhaIso = amanha.toISOString();
+  const foraDoHorizonte = await customer.request<CheckResult>("/api/schedule/check", {
+    body: { scheduledFor: amanhaIso },
+  });
+  check(
+    "Com horizonte zero, só dá para agendar hoje",
+    foraDoHorizonte.data?.valid === false,
+    foraDoHorizonte.data?.reason,
+  );
+  check(
+    "Mensagem explica que é só para hoje",
+    (foraDoHorizonte.data?.reason ?? "").toLowerCase().includes("hoje"),
+    foraDoHorizonte.data?.reason,
+  );
+
+  // ------------------------------- expediente -------------------------------
+  await setScheduleRules({
+    minLeadMinutes: 0,
+    scheduleHorizonDays: 1,
+    openingHours: Array.from({ length: 7 }, (_, weekday) => ({
+      weekday,
+      open: "18:00",
+      close: "23:00",
+      closed: false,
+    })),
+  });
+
+  const foraDoExpediente = await customer.request<CheckResult>("/api/schedule/check", {
+    body: { scheduledFor: "05:00" },
+  });
+  check(
+    "Horário fora do expediente é recusado",
+    foraDoExpediente.data?.valid === false,
+    foraDoExpediente.data?.reason,
+  );
+  check(
+    "Mensagem informa a faixa de atendimento",
+    (foraDoExpediente.data?.reason ?? "").includes("18:00"),
+    foraDoExpediente.data?.reason,
+  );
+
+  const dentroDoExpediente = await customer.request<CheckResult>("/api/schedule/check", {
+    body: { scheduledFor: "19:00" },
+  });
+  check(
+    "Horário dentro do expediente é aprovado",
+    dentroDoExpediente.data?.valid === true,
+    dentroDoExpediente.data?.reason,
+  );
+
+  // -------------------------------- capacidade ------------------------------
+  // Janela curta e capacidade 1: o segundo pedido no mesmo horário não cabe.
+  await resetScheduleRules();
+  await setScheduleRules({ slotWindowMinutes: 5, slotCapacity: 1 });
+  await clearRateLimits();
+
+  const horarioDisputado = horarioDeRetirada(95);
+
+  const primeiroDaJanela = await customer.request<OrderResponse>("/api/orders", {
+    body: {
+      items: [{ productId: espetoCarne.id, quantity: 2 }],
+      deliveryType: "PICKUP",
+      paymentMethod: "PIX",
+      scheduledFor: horarioDisputado,
+      idempotencyKey: `vaga1-${stamp}`,
+    },
+  });
+  check("Primeiro pedido ocupa a janela", primeiroDaJanela.ok, primeiroDaJanela.error?.message);
+
+  const janelaCheia = await customer.request<CheckResult>("/api/schedule/check", {
+    body: { scheduledFor: horarioDisputado },
+  });
+  check("Janela lotada é recusada na conferência", janelaCheia.data?.valid === false, janelaCheia.data?.reason);
+  check(
+    "Mensagem avisa que o horário está lotado",
+    (janelaCheia.data?.reason ?? "").toLowerCase().includes("lotado"),
+    janelaCheia.data?.reason,
+  );
+
+  const segundoDaJanela = await customer.request("/api/orders", {
+    body: {
+      items: [{ productId: espetoCarne.id, quantity: 1 }],
+      deliveryType: "PICKUP",
+      paymentMethod: "PIX",
+      scheduledFor: horarioDisputado,
+      idempotencyKey: `vaga2-${stamp}`,
+    },
+  });
+  check("Segundo pedido na janela lotada é recusado", !segundoDaJanela.ok, segundoDaJanela.error?.message);
+
+  // Cancelar libera a vaga: pedido cancelado não ocupa agenda.
+  await customer.request(`/api/orders/${primeiroDaJanela.data?.order.id}/cancel`, {
+    body: { reason: "Liberando a janela no teste" },
+  });
+  const janelaLiberada = await customer.request<CheckResult>("/api/schedule/check", {
+    body: { scheduledFor: horarioDisputado },
+  });
+  check(
+    "Cancelar o pedido devolve a vaga na agenda",
+    janelaLiberada.data?.valid === true,
+    janelaLiberada.data?.reason,
+  );
+
+  // ------------------------------- remarcação -------------------------------
+  await resetScheduleRules();
+  await clearRateLimits();
+
+  const paraRemarcar = await customer.request<OrderResponse>("/api/orders", {
+    body: {
+      items: [{ productId: refrigerante.id, quantity: 1 }],
+      deliveryType: "PICKUP",
+      paymentMethod: "CASH",
+      scheduledFor: horarioDeRetirada(40),
+      idempotencyKey: `remarcar-${stamp}`,
+    },
+  });
+  check("Pedido para remarcar é criado", paraRemarcar.ok, paraRemarcar.error?.message);
+
+  const novoHorario = horarioDeRetirada(150);
+  const remarcado = await customer.request<{ order: { scheduledFor: string; status: string } }>(
+    `/api/orders/${paraRemarcar.data?.order.id}/reschedule`,
+    { body: { scheduledFor: novoHorario } },
+  );
+  check("Cliente remarca a própria retirada", remarcado.ok, remarcado.error?.message);
+  check(
+    "Novo horário foi gravado",
+    remarcado.data?.order.scheduledFor
+      ? horaNaLoja(remarcado.data.order.scheduledFor) === novoHorario
+      : false,
+    `${remarcado.data?.order.scheduledFor} vs ${novoHorario}`,
+  );
+
+  const intruso = new Client();
+  await intruso.request("/api/auth/register", {
+    body: {
+      name: "Cliente Intruso",
+      email: `intruso.${stamp}@example.com`,
+      phone: "11955556666",
+      password,
+    },
+  });
+  const remarcarAlheio = await intruso.request(
+    `/api/orders/${paraRemarcar.data?.order.id}/reschedule`,
+    { body: { scheduledFor: horarioDeRetirada(160) } },
+  );
+  check("Cliente não remarca pedido de outro cliente", !remarcarAlheio.ok && remarcarAlheio.status === 404);
+
+  const agendaSemLogin = await anonymous.request("/api/admin/agenda");
+  check("Agenda do painel exige login de admin", !agendaSemLogin.ok);
+
+  const agendaComoCliente = await customer.request("/api/admin/agenda");
+  check("Cliente não acessa a agenda do painel (403)", agendaComoCliente.status === 403);
 
   // ============================= painel admin ===============================
   section("Painel administrativo");
@@ -563,7 +906,9 @@ async function main() {
     });
     check("Pular etapas do status é bloqueado (409)", !invalidJump.ok && invalidJump.status === 409);
 
-    for (const status of ["RECEIVED", "PREPARING", "READY", "PICKED_UP"]) {
+    // De AGENDADO a RETIRADO. RECEIVED não entra: é estado de delivery,
+    // mantido no enum só pelos pedidos antigos do histórico.
+    for (const status of ["PREPARING", "READY", "PICKED_UP"]) {
       const step = await admin.request<{ order: { status: string } }>(
         `/api/admin/orders/${order?.id}/status`,
         { body: { status } },
@@ -635,6 +980,7 @@ async function main() {
         items: [{ productId, quantity: 1 }],
         deliveryType: "PICKUP",
         paymentMethod: "PIX",
+        scheduledFor: horarioDeRetirada(),
       },
     });
     check("Pedido com produto indisponível é rejeitado", !unavailableOrder.ok);
@@ -671,8 +1017,16 @@ async function main() {
       customers: Array<{ email: string; orderCount: number; totalSpentCents: number }>;
     }>(`/api/admin/customers?search=${encodeURIComponent(email)}`);
     check("Busca de clientes funciona", customers.data?.customers.length === 1);
-    check("Cliente aparece com 1 pedido", customers.data?.customers[0]?.orderCount === 1);
-    check("Valor gasto do cliente é R$ 38,00", customers.data?.customers[0]?.totalSpentCents === 3800);
+    check(
+      "Cliente aparece com os pedidos que fez",
+      (customers.data?.customers[0]?.orderCount ?? 0) >= 1,
+      `${customers.data?.customers[0]?.orderCount}`,
+    );
+    check(
+      "Valor gasto do cliente inclui o pedido de R$ 38,00",
+      (customers.data?.customers[0]?.totalSpentCents ?? 0) >= 3800,
+      `${customers.data?.customers[0]?.totalSpentCents}`,
+    );
     check(
       "Resposta de clientes não expõe senha nem hash",
       !JSON.stringify(customers.data).toLowerCase().includes("passwordhash"),
@@ -808,6 +1162,7 @@ async function main() {
         items: [{ productId: espetoCarne.id, quantity: 1 }],
         deliveryType: "PICKUP",
         paymentMethod: "PIX",
+        scheduledFor: horarioDeRetirada(),
       },
     });
     check("Pedido abaixo do mínimo é recusado no servidor", !blockedOrder.ok);
@@ -867,6 +1222,7 @@ async function main() {
         items: [{ productId: espetoCarne.id, quantity: 2 }],
         deliveryType: "PICKUP",
         paymentMethod: "PIX",
+        scheduledFor: horarioDeRetirada(),
       },
     });
     check("Loja fechada recusa novos pedidos", !closedOrder.ok);
@@ -887,6 +1243,7 @@ async function main() {
         items: [{ productId: espetoCarne.id, quantity: 2 }],
         deliveryType: "PICKUP",
         paymentMethod: "PIX",
+        scheduledFor: horarioDeRetirada(),
         idempotencyKey: `reopen-${stamp}`,
       },
     });
@@ -905,6 +1262,7 @@ async function main() {
         deliveryType: "PICKUP",
         paymentMethod: "CASH",
         changeForCents: 5000,
+        scheduledFor: horarioDeRetirada(),
         idempotencyKey: `cash-${stamp}`,
       },
     },
@@ -923,6 +1281,7 @@ async function main() {
       deliveryType: "PICKUP",
       paymentMethod: "CASH",
       changeForCents: 500,
+      scheduledFor: horarioDeRetirada(),
       idempotencyKey: `badchange-${stamp}`,
     },
   });
@@ -961,6 +1320,7 @@ async function main() {
       items: [{ productId: refrigerante.id, quantity: 1 }],
       deliveryType: "PICKUP",
       paymentMethod: "CASH",
+      scheduledFor: horarioDeRetirada(),
       idempotencyKey: `cancel-${stamp}`,
     },
   });
@@ -985,7 +1345,12 @@ async function main() {
   check("Pedido inexistente devolve 404", notFound.status === 404);
 
   const emptyCart = await customer.request("/api/orders", {
-    body: { items: [], deliveryType: "PICKUP", paymentMethod: "PIX" },
+    body: {
+      items: [],
+      deliveryType: "PICKUP",
+      paymentMethod: "PIX",
+      scheduledFor: horarioDeRetirada(),
+    },
   });
   check("Carrinho vazio é rejeitado", !emptyCart.ok && emptyCart.status === 422);
 
@@ -1001,6 +1366,7 @@ async function main() {
       items: [{ productId: espetoCarne.id, quantity: 1 }],
       deliveryType: "PICKUP",
       paymentMethod: "BITCOIN",
+      scheduledFor: horarioDeRetirada(),
     },
   });
   check("Forma de pagamento inválida é rejeitada", !badMethod.ok && badMethod.status === 422);
@@ -1010,6 +1376,7 @@ async function main() {
       items: [{ productId: espetoCarne.id, quantity: 2 }],
       deliveryType: "DELIVERY",
       paymentMethod: "PIX",
+      scheduledFor: horarioDeRetirada(),
       idempotencyKey: `noaddr-${stamp}`,
     },
   });
@@ -1132,7 +1499,10 @@ async function main() {
 
   // ================================ limpeza =================================
   if (originalStore) {
-    await prisma.settings.update({ where: { id: "default" }, data: originalStore });
+    await prisma.settings.update({
+      where: { id: "default" },
+      data: { ...originalStore, openingHours: originalStore.openingHours as never },
+    });
   }
 
   // Orders não têm cascade a partir de User (de propósito: um pedido nunca

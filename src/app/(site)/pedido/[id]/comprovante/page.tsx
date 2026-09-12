@@ -4,7 +4,7 @@ import { prisma } from "@/server/db";
 import { getCurrentUser } from "@/server/auth";
 import { getSettings } from "@/server/services/settings";
 import { formatCents } from "@/lib/money";
-import { formatAddress, formatDateTime, formatPhone } from "@/lib/format";
+import { formatAddress, formatDate, formatDateTime, formatPhone, formatTime } from "@/lib/format";
 import {
   DELIVERY_TYPE_LABEL,
   ORDER_STATUS_LABEL,
@@ -93,6 +93,20 @@ export default async function ComprovantePage({ params }: { params: Promise<{ id
           </p>
           <p className="muted mt-1 text-xs">{formatDateTime(order.createdAt)}</p>
         </div>
+
+        {/* O horário combinado é o dado mais importante do comprovante:
+            é por ele que a cozinha separa e o cliente confere. */}
+        {order.scheduledFor && (
+          <div className="border-b border-dashed py-3 text-center">
+            <p className="text-xs font-semibold tracking-widest uppercase">
+              {order.deliveryType === "PICKUP" ? "Retirar às" : "Entregar às"}
+            </p>
+            <p className="text-2xl font-extrabold tabular-nums">
+              {formatTime(order.scheduledFor)}
+            </p>
+            <p className="muted text-xs">{formatDate(order.scheduledFor)}</p>
+          </div>
+        )}
 
         {/* -------------------------------- itens --------------------------- */}
         <section className="border-b border-dashed py-4">

@@ -8,6 +8,7 @@ import { useCart, useSession, useStoreSettings, useToast } from "@/components/pr
 import { formatCents, parseMoneyToCents } from "@/lib/money";
 import { formatAddress, formatPhone } from "@/lib/format";
 import { Button, Field, Input, Textarea, ErrorState, Spinner, cx } from "@/components/ui";
+import { SchedulePicker } from "@/components/site/schedule-picker";
 
 type Address = {
   id: string;
@@ -40,6 +41,9 @@ const EMPTY_ADDRESS = {
  *
  * Poucos passos de propósito: no celular, cada tela extra é gente que
  * desiste do pedido. Tudo é conferido de novo no servidor ao enviar.
+ *
+ * A loja trabalha por AGENDAMENTO: ainda não há entrega, então o cliente
+ * combina a hora em que vai buscar e a cozinha prepara para aquele horário.
  */
 export default function CheckoutPage() {
   const router = useRouter();
@@ -56,6 +60,9 @@ export default function CheckoutPage() {
   const [useNewAddress, setUseNewAddress] = useState(false);
   const [newAddress, setNewAddress] = useState(EMPTY_ADDRESS);
   const [paymentMethod, setPaymentMethod] = useState<"PIX" | "CARD" | "CASH">("PIX");
+  /** Hora da retirada, em "HH:MM". O servidor resolve o dia e confere a vaga. */
+  const [scheduledFor, setScheduledFor] = useState("");
+  const [scheduleOk, setScheduleOk] = useState(false);
   const [changeFor, setChangeFor] = useState("");
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -88,6 +95,15 @@ export default function CheckoutPage() {
       })
       .catch(() => setUseNewAddress(true));
   }, [user, setNeighborhood]);
+
+  // Enquanto a loja não entregar, o único jeito é retirar. Isso mora aqui
+  // (e não em uma constante no código) para que ligar a entrega no painel
+  // baste — nenhuma tela precisa mudar.
+  useEffect(() => {
+    if (settings && !settings.allowDelivery && deliveryType !== "PICKUP") {
+      setDeliveryType("PICKUP");
+    }
+  }, [settings, deliveryType, setDeliveryType]);
 
   // Ajusta a forma de pagamento se a loja desabilitou a escolhida.
   useEffect(() => {
@@ -138,6 +154,7 @@ export default function CheckoutPage() {
         notes: notes || undefined,
         changeForCents:
           paymentMethod === "CASH" && changeForCents !== null ? changeForCents : undefined,
+        scheduledFor,
         idempotencyKey: idempotencyKey.current,
       };
 
@@ -147,7 +164,7 @@ export default function CheckoutPage() {
       });
 
       clear();
-      push("Pedido criado! Agora é só pagar.", "success");
+      push(`Pedido agendado para ${scheduledFor}! Agora é só pagar.`, "success");
       router.push(`/pedido/${data.order.id}`);
     } catch (caught) {
       if (caught instanceof ApiError) setFieldErrors(caught.fieldErrors);
@@ -219,42 +236,52 @@ export default function CheckoutPage() {
         </Link>
       </section>
 
-      {/* -------------------- 2. entrega ou retirada ----------------------- */}
+      {/* ----------------------- 2. horário da retirada -------------------- */}
       <section className="surface mb-4 p-5">
         <h2 className="mb-3 flex items-center gap-2 font-bold">
-          <Step n={2} /> Como você quer receber
+          <Step n={2} /> Quando você vai retirar
         </h2>
 
-        <div className="grid grid-cols-2 gap-2">
-          {(
-            [
-              { value: "DELIVERY", label: "Entrega", icon: "🛵", enabled: settings?.allowDelivery ?? true },
-              { value: "PICKUP", label: "Retirar no local", icon: "🏪", enabled: settings?.allowPickup ?? true },
-            ] as const
-          ).map((option) => (
-            <label
-              key={option.value}
-              className={cx(
-                "flex cursor-pointer flex-col items-center gap-1 rounded-xl border p-4 text-center transition-colors",
-                deliveryType === option.value
-                  ? "border-brand-500 bg-brand-50 dark:bg-brand-950/40"
-                  : "hover:bg-[var(--surface-sunken)]",
-                !option.enabled && "pointer-events-none opacity-40",
-              )}
-            >
-              <input
-                type="radio"
-                name="deliveryType"
-                checked={deliveryType === option.value}
-                disabled={!option.enabled}
-                onChange={() => setDeliveryType(option.value)}
-                className="sr-only"
-              />
-              <span className="text-2xl" aria-hidden="true">{option.icon}</span>
-              <span className="text-sm font-semibold">{option.label}</span>
-            </label>
-          ))}
-        </div>
+        {/* A escolha só aparece quando a loja realmente entrega. */}
+        {settings?.allowDelivery && (
+          <div className="mb-4 grid grid-cols-2 gap-2">
+            {(
+              [
+                { value: "DELIVERY", label: "Entrega", icon: "🛵", enabled: true },
+                { value: "PICKUP", label: "Retirar no local", icon: "🏪", enabled: settings?.allowPickup ?? true },
+              ] as const
+            ).map((option) => (
+              <label
+                key={option.value}
+                className={cx(
+                  "flex cursor-pointer flex-col items-center gap-1 rounded-xl border p-4 text-center transition-colors",
+                  deliveryType === option.value
+                    ? "border-brand-500 bg-brand-50 dark:bg-brand-950/40"
+                    : "hover:bg-[var(--surface-sunken)]",
+                  !option.enabled && "pointer-events-none opacity-40",
+                )}
+              >
+                <input
+                  type="radio"
+                  name="deliveryType"
+                  checked={deliveryType === option.value}
+                  disabled={!option.enabled}
+                  onChange={() => setDeliveryType(option.value)}
+                  className="sr-only"
+                />
+                <span className="text-2xl" aria-hidden="true">{option.icon}</span>
+                <span className="text-sm font-semibold">{option.label}</span>
+              </label>
+            ))}
+          </div>
+        )}
+
+        <SchedulePicker
+          value={scheduledFor}
+          onChange={setScheduledFor}
+          onValidityChange={setScheduleOk}
+          error={fieldErrors.scheduledFor}
+        />
 
         {deliveryType === "PICKUP" && settings?.address.street && (
           <p className="muted mt-3 rounded-xl bg-[var(--surface-sunken)] p-3 text-sm">
@@ -471,8 +498,8 @@ export default function CheckoutPage() {
 
         {paymentMethod === "PIX" && (
           <p className="muted mt-3 text-sm">
-            Ao confirmar, o código PIX aparece na tela. O pedido é liberado para a cozinha assim
-            que o pagamento for confirmado pelo sistema.
+            Ao confirmar, o código PIX aparece na tela. Seu horário fica garantido assim que o
+            pagamento for confirmado pelo sistema.
           </p>
         )}
       </section>
@@ -541,10 +568,10 @@ export default function CheckoutPage() {
           </div>
         </dl>
 
-        {quote && (
-          <p className="muted mt-3 text-xs">
-            Tempo estimado: cerca de {quote.estimatedMinutes} minutos após a confirmação do
-            pagamento.
+        {scheduledFor && (
+          <p className="mt-3 rounded-xl bg-[var(--surface-sunken)] p-3 text-sm">
+            {deliveryType === "PICKUP" ? "Retirada" : "Entrega"} agendada para as{" "}
+            <strong className="tabular-nums">{scheduledFor}</strong> de hoje.
           </p>
         )}
       </section>
@@ -559,9 +586,18 @@ export default function CheckoutPage() {
             size="lg"
             fullWidth
             loading={submitting}
-            disabled={quoting || !quote || !quote.meetsMinimum || Boolean(changeError)}
+            disabled={
+              quoting ||
+              !quote ||
+              !quote.meetsMinimum ||
+              Boolean(changeError) ||
+              // Sem horário aprovado não há pedido: a loja trabalha agendada.
+              // O servidor confere de novo — isto só evita a ida e volta.
+              !scheduledFor ||
+              !scheduleOk
+            }
           >
-            Confirmar pedido · {formatCents(quote?.totalCents ?? 0)}
+            {scheduledFor ? `Agendar · ${formatCents(quote?.totalCents ?? 0)}` : "Escolha o horário"}
           </Button>
         </div>
       </div>

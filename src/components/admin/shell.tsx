@@ -10,6 +10,7 @@ import { Button, cx } from "@/components/ui";
 const NAV = [
   { href: "/admin", label: "Dashboard", icon: "M4 13h6V4H4v9Zm0 7h6v-5H4v5Zm10 0h6V11h-6v9Zm0-16v5h6V4h-6Z" },
   { href: "/admin/pedidos", label: "Pedidos", icon: "M8 4h8a2 2 0 0 1 2 2v14l-6-3-6 3V6a2 2 0 0 1 2-2Z" },
+  { href: "/admin/agenda", label: "Agenda", icon: "M8 3v3m8-3v3M4 9h16M5 6h14a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1Z" },
   { href: "/admin/produtos", label: "Cardápio", icon: "M4 6h16M4 12h16M4 18h16" },
   { href: "/admin/clientes", label: "Clientes", icon: "M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM4 21a8 8 0 0 1 16 0" },
   { href: "/admin/financeiro", label: "Financeiro", icon: "M12 3v18M7 7h7a3 3 0 0 1 0 6H7m0 0h8" },

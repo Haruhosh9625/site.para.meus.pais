@@ -6,7 +6,7 @@ import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import type { DeliveryType, OrderStatus, PaymentMethod, PaymentStatus } from "@prisma/client";
 import { api, errorMessage } from "@/lib/api-client";
 import { formatCents } from "@/lib/money";
-import { formatDateTime, formatPhone, formatRelative } from "@/lib/format";
+import { formatDateTime, formatPhone, formatRelative, formatTime } from "@/lib/format";
 import {
   DELIVERY_TYPE_LABEL,
   ORDER_STATUS_LABEL,
@@ -27,6 +27,7 @@ type OrderRow = {
   customerName: string;
   customerPhone: string;
   notes: string | null;
+  scheduledFor: string | null;
   createdAt: string;
   addressSnapshot: { neighborhood?: string; street?: string; number?: string } | null;
   items: Array<{ id: string; productNameSnapshot: string; quantity: number }>;
@@ -271,9 +272,22 @@ function OrdersList() {
                     <p className="muted mt-1 text-sm">
                       {order.customerName} · {formatPhone(order.customerPhone)}
                     </p>
-                    <p className="muted text-xs">
-                      {formatDateTime(order.createdAt)} ({formatRelative(order.createdAt)})
-                    </p>
+                    {/* Na operação do dia, o horário combinado vale mais que
+                        a hora em que o pedido entrou. */}
+                    {order.scheduledFor ? (
+                      <p className="text-xs font-semibold">
+                        {order.deliveryType === "PICKUP" ? "Retirada" : "Entrega"} às{" "}
+                        <span className="tabular-nums">{formatTime(order.scheduledFor)}</span>
+                        <span className="muted font-normal">
+                          {" "}
+                          · pedido {formatRelative(order.createdAt)}
+                        </span>
+                      </p>
+                    ) : (
+                      <p className="muted text-xs">
+                        {formatDateTime(order.createdAt)} ({formatRelative(order.createdAt)})
+                      </p>
+                    )}
                   </div>
 
                   <div className="shrink-0 text-right">

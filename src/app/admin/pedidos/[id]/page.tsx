@@ -6,7 +6,7 @@ import type { DeliveryType, OrderStatus, PaymentMethod, PaymentStatus } from "@p
 import { api, errorMessage } from "@/lib/api-client";
 import { useToast } from "@/components/providers";
 import { formatCents } from "@/lib/money";
-import { formatAddress, formatDateTime, formatPhone } from "@/lib/format";
+import { formatAddress, formatDate, formatDateTime, formatPhone, formatTime } from "@/lib/format";
 import {
   DELIVERY_TYPE_LABEL,
   ORDER_STATUS_LABEL,
@@ -34,6 +34,7 @@ type OrderDetail = {
   notes: string | null;
   cancelReason: string | null;
   estimatedMinutes: number | null;
+  scheduledFor: string | null;
   createdAt: string;
   paidAt: string | null;
   addressSnapshot: {
@@ -177,7 +178,18 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
           <h1 className="text-3xl font-extrabold tracking-tight tabular-nums">
             #{String(order.number).padStart(6, "0")}
           </h1>
-          <p className="muted mt-1 text-sm">{formatDateTime(order.createdAt)}</p>
+          <p className="muted mt-1 text-sm">Feito em {formatDateTime(order.createdAt)}</p>
+          {order.scheduledFor && (
+            <p className="mt-2 inline-flex items-baseline gap-2 rounded-xl bg-brand-100 px-3 py-1.5 dark:bg-brand-900/40">
+              <span className="text-xs font-semibold tracking-wide uppercase">
+                {order.deliveryType === "PICKUP" ? "Retirar às" : "Entregar às"}
+              </span>
+              <span className="text-xl font-extrabold tabular-nums">
+                {formatTime(order.scheduledFor)}
+              </span>
+              <span className="muted text-xs">{formatDate(order.scheduledFor)}</span>
+            </p>
+          )}
         </div>
         <div className="flex flex-col items-end gap-2">
           <OrderStatusBadge status={order.status} />
@@ -308,6 +320,12 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
               <dt className="muted w-24 shrink-0">Receber</dt>
               <dd className="font-medium">{DELIVERY_TYPE_LABEL[order.deliveryType]}</dd>
             </div>
+            {order.scheduledFor && (
+              <div className="flex gap-2">
+                <dt className="muted w-24 shrink-0">Horário</dt>
+                <dd className="font-medium">{formatDateTime(order.scheduledFor)}</dd>
+              </div>
+            )}
             {order.addressSnapshot && (
               <div className="flex gap-2">
                 <dt className="muted w-24 shrink-0">Endereço</dt>

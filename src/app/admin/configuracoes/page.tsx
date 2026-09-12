@@ -34,6 +34,10 @@ type Settings = {
   openingHours: OpeningHour[];
   manualOpen: boolean;
   useManualSwitch: boolean;
+  minLeadMinutes: number;
+  slotWindowMinutes: number;
+  slotCapacity: number;
+  scheduleHorizonDays: number;
   deliveryFeeCents: number;
   minOrderCents: number;
   freeDeliveryAboveCents: number;
@@ -404,6 +408,68 @@ export default function AdminSettingsPage() {
           </ul>
         </section>
 
+        {/* ---------------------------- agendamento ------------------------ */}
+        <section className="surface space-y-4 p-5">
+          <h2 className="font-bold">Agendamento de retirada</h2>
+          <p className="muted text-xs">
+            O cliente digita a hora em que vai buscar. O sistema aceita apenas horários dentro
+            do funcionamento acima e recusa janelas já lotadas.
+          </p>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field
+              label="Antecedência mínima (min)"
+              hint="Tempo que a cozinha precisa entre o pedido e a retirada."
+            >
+              {({ id, describedBy }) => (
+                <Input id={id} aria-describedby={describedBy} type="number" min={0} max={600}
+                  value={settings.minLeadMinutes}
+                  onChange={(e) => patch({ minLeadMinutes: Number(e.target.value) || 0 })} />
+              )}
+            </Field>
+
+            <Field
+              label="Tamanho da janela (min)"
+              hint="De quanto em quanto tempo a agenda é dividida. 30 gera 18:00, 18:30, 19:00..."
+            >
+              {({ id, describedBy }) => (
+                <Input id={id} aria-describedby={describedBy} type="number" min={5} max={240}
+                  value={settings.slotWindowMinutes}
+                  onChange={(e) => patch({ slotWindowMinutes: Number(e.target.value) || 5 })} />
+              )}
+            </Field>
+
+            <Field
+              label="Pedidos por janela"
+              hint="Quantos pedidos cabem em cada janela. Zero = sem limite."
+            >
+              {({ id, describedBy }) => (
+                <Input id={id} aria-describedby={describedBy} type="number" min={0} max={999}
+                  value={settings.slotCapacity}
+                  onChange={(e) => patch({ slotCapacity: Number(e.target.value) || 0 })} />
+              )}
+            </Field>
+
+            <Field
+              label="Dias de antecedência"
+              hint="Zero = agendamentos só para hoje."
+            >
+              {({ id, describedBy }) => (
+                <Input id={id} aria-describedby={describedBy} type="number" min={0} max={30}
+                  value={settings.scheduleHorizonDays}
+                  onChange={(e) => patch({ scheduleHorizonDays: Number(e.target.value) || 0 })} />
+              )}
+            </Field>
+          </div>
+
+          <p className="muted border-t pt-3 text-xs">
+            {settings.slotCapacity > 0
+              ? `Hoje: até ${settings.slotCapacity} pedido(s) a cada ${settings.slotWindowMinutes} minutos — ` +
+                `cerca de ${Math.round((settings.slotCapacity * 60) / Math.max(1, settings.slotWindowMinutes))} por hora.`
+              : "Sem limite de pedidos por horário. Defina um número quando a cozinha começar a apertar."}
+          </p>
+        </section>
+
         {/* ------------------------ entrega e pedido mínimo ---------------- */}
         <section className="surface space-y-4 p-5">
           <h2 className="font-bold">Entrega e pedido mínimo</h2>
@@ -450,6 +516,11 @@ export default function AdminSettingsPage() {
                 className="size-5 accent-[var(--color-brand-600)]" />
               Aceitar entrega
             </label>
+            <p className="muted w-full text-xs">
+              Com a entrega desligada, todo pedido é retirada agendada e as telas do cliente
+              deixam de oferecer a escolha. Ligue quando começarem a entregar — nada no código
+              precisa mudar.
+            </p>
             <label className="flex items-center gap-2 text-sm font-medium">
               <input type="checkbox" checked={settings.allowPickup}
                 onChange={(e) => patch({ allowPickup: e.target.checked })}

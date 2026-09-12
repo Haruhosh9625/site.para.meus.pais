@@ -150,7 +150,12 @@ export default function CarrinhoPage() {
         )}
       </ul>
 
-      {/* ---------------------- entrega ou retirada ------------------------- */}
+      {/* ---------------------- entrega ou retirada -------------------------
+          Enquanto a loja não entrega, não há escolha a fazer: todo pedido é
+          retirada agendada. Mostrar duas opções com uma desabilitada só
+          confunde — então o bloco inteiro aparece apenas quando a entrega
+          está ligada em /admin/configuracoes. */}
+      {settings?.allowDelivery ? (
       <fieldset className="surface mt-4 p-4">
         <legend className="px-1 text-sm font-semibold">Como você quer receber?</legend>
         <div className="mt-2 grid grid-cols-2 gap-2">
@@ -189,6 +194,18 @@ export default function CarrinhoPage() {
           </p>
         )}
       </fieldset>
+      ) : (
+        <p className="surface mt-4 flex items-start gap-2.5 p-4 text-sm">
+          <span className="text-lg leading-none" aria-hidden="true">🏪</span>
+          <span>
+            <strong className="block">Retirada agendada</strong>
+            <span className="muted">
+              Ainda não fazemos entrega. No próximo passo você escolhe a hora em que vai
+              buscar e deixamos tudo pronto para esse horário.
+            </span>
+          </span>
+        </p>
+      )}
 
       {/* -------------------------------- cupom ----------------------------- */}
       <div className="surface mt-4 p-4">
@@ -314,7 +331,9 @@ export default function CarrinhoPage() {
             >
               {settings && !settings.isOpen
                 ? "Loja fechada"
-                : `Finalizar pedido · ${formatCents(quote?.totalCents ?? 0)}`}
+                : `${settings?.allowDelivery ? "Finalizar pedido" : "Escolher horário"} · ${formatCents(
+                    quote?.totalCents ?? 0,
+                  )}`}
             </Button>
           </Link>
         </div>

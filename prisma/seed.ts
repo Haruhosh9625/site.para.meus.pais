@@ -155,6 +155,18 @@ async function seedSettings() {
       minOrderCents: 0,
       prepTimeMinutes: 30,
       deliveryTimeMinutes: 20,
+      // A DS Espetos ainda não entrega: só retirada agendada. O dia em que
+      // a entrega começar, é um clique em /admin/configuracoes — nada aqui
+      // precisa mudar.
+      allowDelivery: false,
+      allowPickup: true,
+      // Agendamento: meia hora de antecedência, janelas de 30 minutos,
+      // sem limite de pedidos por janela (o administrador liga o limite
+      // quando a cozinha precisar) e apenas para o dia de hoje.
+      minLeadMinutes: 30,
+      slotWindowMinutes: 30,
+      slotCapacity: 0,
+      scheduleHorizonDays: 0,
     },
   });
   console.log("  Configurações: prontas");

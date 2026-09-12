@@ -9,13 +9,20 @@ export const GET = route(async (request: Request) => {
   const url = new URL(request.url);
   const where = buildOrderWhere(url.searchParams);
 
+  // A cozinha trabalha por horário combinado, o financeiro por data de
+  // entrada. Os dois pedidos de ordenação convivem no mesmo endpoint.
+  const orderBy =
+    url.searchParams.get("sort") === "schedule"
+      ? ([{ scheduledFor: "asc" }, { createdAt: "asc" }] as const)
+      : ([{ createdAt: "desc" }] as const);
+
   const take = Math.min(100, Math.max(1, Number(url.searchParams.get("limit") ?? 30)));
   const skip = Math.max(0, Number(url.searchParams.get("offset") ?? 0));
 
   const [orders, total, aggregate] = await Promise.all([
     prisma.order.findMany({
       where,
-      orderBy: { createdAt: "desc" },
+      orderBy: [...orderBy],
       take,
       skip,
       include: {

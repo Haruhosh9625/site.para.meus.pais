@@ -146,11 +146,20 @@ export async function confirmPayment(params: {
   });
 
   // Avança o pedido apenas se ele ainda estava esperando pagamento.
+  // Vai direto para AGENDADO: o pagamento confirmado é o que garante o
+  // horário, e é esse o estado em que o pedido espera a hora marcada.
   if (payment.order.status === "AWAITING_PAYMENT") {
+    const actor = params.adminId ?? `system:${params.source}`;
     await changeOrderStatus({
       orderId: payment.orderId,
       to: "PAYMENT_CONFIRMED",
-      changedBy: params.adminId ?? `system:${params.source}`,
+      changedBy: actor,
+      force: true,
+    });
+    await changeOrderStatus({
+      orderId: payment.orderId,
+      to: "SCHEDULED",
+      changedBy: actor,
       force: true,
     });
   }

@@ -164,7 +164,11 @@ const STATUS_MESSAGE: Record<OrderStatus, { title: string; body: string }> = {
   },
   PAYMENT_CONFIRMED: {
     title: "Pagamento confirmado",
-    body: "Recebemos seu pagamento! Já vamos preparar seu pedido.",
+    body: "Recebemos seu pagamento! Seu horário está garantido.",
+  },
+  SCHEDULED: {
+    title: "Agendamento confirmado",
+    body: "Seu pedido está agendado. Vamos preparar para o horário combinado.",
   },
   RECEIVED: {
     title: "Pedido recebido",
@@ -175,8 +179,8 @@ const STATUS_MESSAGE: Record<OrderStatus, { title: string; body: string }> = {
     body: "Seu pedido já está na chapa. Não vai demorar!",
   },
   READY: {
-    title: "Pedido pronto",
-    body: "Seu pedido está pronto.",
+    title: "Pronto para retirada",
+    body: "Seu pedido está pronto e esperando por você na DS Espetos.",
   },
   OUT_FOR_DELIVERY: {
     title: "Saiu para entrega",

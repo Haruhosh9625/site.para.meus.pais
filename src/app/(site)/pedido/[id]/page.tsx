@@ -6,10 +6,10 @@ import type { DeliveryType, OrderStatus, PaymentMethod, PaymentStatus } from "@p
 import { api, errorMessage } from "@/lib/api-client";
 import { useToast } from "@/components/providers";
 import { formatCents } from "@/lib/money";
-import { formatAddress, formatDateTime, formatPhone } from "@/lib/format";
+import { formatAddress, formatDateTime, formatPhone, formatTime } from "@/lib/format";
 import { DELIVERY_TYPE_LABEL, PAYMENT_METHOD_LABEL, PAYMENT_STATUS_LABEL } from "@/lib/constants";
 import { OrderStatusBadge, OrderTimeline } from "@/components/site/order-status";
-import { Badge, Button, ErrorState, Skeleton, Spinner } from "@/components/ui";
+import { Badge, Button, ErrorState, Field, Input, Skeleton, Spinner } from "@/components/ui";
 
 type OrderPayload = {
   id: string;
@@ -28,6 +28,8 @@ type OrderPayload = {
   customerPhone: string;
   notes: string | null;
   estimatedMinutes: number | null;
+  /** Horário combinado da retirada. Nulo só nos pedidos antigos. */
+  scheduledFor: string | null;
   createdAt: string;
   paidAt: string | null;
   addressSnapshot: {
@@ -72,6 +74,9 @@ export default function PedidoPage({ params }: { params: Promise<{ id: string }>
   const [error, setError] = useState<string | null>(null);
   const [regenerating, setRegenerating] = useState(false);
   const [cancelling, setCancelling] = useState(false);
+  const [newTime, setNewTime] = useState("");
+  const [rescheduling, setRescheduling] = useState(false);
+  const [rescheduleError, setRescheduleError] = useState<string | null>(null);
   const [confirmCancel, setConfirmCancel] = useState(false);
 
   const load = useCallback(async () => {
@@ -111,6 +116,25 @@ export default function PedidoPage({ params }: { params: Promise<{ id: string }>
       push(errorMessage(caught), "error");
     } finally {
       setRegenerating(false);
+    }
+  }
+
+  /** Remarca a retirada. O servidor confere o expediente e a vaga de novo. */
+  async function reschedule() {
+    setRescheduling(true);
+    setRescheduleError(null);
+    try {
+      await api(`/api/orders/${id}/reschedule`, {
+        method: "POST",
+        body: { scheduledFor: newTime },
+      });
+      await load();
+      push(`Retirada remarcada para as ${newTime}.`, "success");
+      setNewTime("");
+    } catch (caught) {
+      setRescheduleError(errorMessage(caught));
+    } finally {
+      setRescheduling(false);
     }
   }
 
@@ -156,6 +180,10 @@ export default function PedidoPage({ params }: { params: Promise<{ id: string }>
     (payment) => payment.status === "PENDING" && payment.checkoutUrl && !payment.pixQrCode,
   );
   const canCancel = ["AWAITING_PAYMENT", "PAYMENT_CONFIRMED", "RECEIVED"].includes(order.status);
+  // Depois que a chapa acende, mudar a hora não ajuda ninguém.
+  const canReschedule =
+    order.scheduledFor !== null &&
+    ["AWAITING_PAYMENT", "PAYMENT_CONFIRMED", "SCHEDULED", "RECEIVED"].includes(order.status);
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-6">
@@ -181,6 +209,56 @@ export default function PedidoPage({ params }: { params: Promise<{ id: string }>
           )}
         </div>
       </div>
+
+      {/* ----------------------------- agendamento -------------------------- */}
+      {order.scheduledFor && (
+        <section className="surface mb-4 border-brand-300 p-5 dark:border-brand-900/50">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <p className="muted text-xs font-semibold tracking-wide uppercase">
+                {order.deliveryType === "PICKUP" ? "Retirada agendada" : "Entrega agendada"}
+              </p>
+              <p className="text-3xl font-extrabold tabular-nums">
+                {formatTime(order.scheduledFor)}
+              </p>
+              <p className="muted text-sm">{formatDateTime(order.scheduledFor)}</p>
+            </div>
+            {canReschedule && (
+              <p className="muted max-w-56 text-xs">
+                Precisa de outro horário? Dá para remarcar enquanto o preparo não começa.
+              </p>
+            )}
+          </div>
+
+          {canReschedule && (
+            <div className="mt-4 flex flex-wrap items-end gap-3 border-t pt-4">
+              <div className="w-36">
+                <Field label="Novo horário" error={rescheduleError ?? undefined}>
+                  {({ id, invalid }) => (
+                    <Input
+                      id={id}
+                      invalid={invalid}
+                      type="time"
+                      step={300}
+                      className="text-lg font-bold tabular-nums"
+                      value={newTime}
+                      onChange={(event) => setNewTime(event.target.value)}
+                    />
+                  )}
+                </Field>
+              </div>
+              <Button
+                variant="outline"
+                onClick={() => void reschedule()}
+                loading={rescheduling}
+                disabled={!/^([01]\d|2[0-3]):[0-5]\d$/.test(newTime)}
+              >
+                Remarcar
+              </Button>
+            </div>
+          )}
+        </section>
+      )}
 
       {/* ------------------------------ pagamento --------------------------- */}
       {order.paymentStatus !== "PAID" && order.status !== "CANCELLED" && (
@@ -320,10 +398,18 @@ export default function PedidoPage({ params }: { params: Promise<{ id: string }>
           deliveryType={order.deliveryType}
           history={order.statusHistory}
         />
-        {order.estimatedMinutes && !["DELIVERED", "PICKED_UP", "CANCELLED"].includes(order.status) && (
+        {order.scheduledFor && !["DELIVERED", "PICKED_UP", "CANCELLED"].includes(order.status) ? (
           <p className="muted border-t pt-3 text-sm">
-            Tempo estimado: cerca de {order.estimatedMinutes} minutos.
+            Combinado para as <strong>{formatTime(order.scheduledFor)}</strong>. Chegue no horário
+            que o pedido estará pronto.
           </p>
+        ) : (
+          order.estimatedMinutes &&
+          !["DELIVERED", "PICKED_UP", "CANCELLED"].includes(order.status) && (
+            <p className="muted border-t pt-3 text-sm">
+              Tempo estimado: cerca de {order.estimatedMinutes} minutos.
+            </p>
+          )
         )}
       </section>
 
@@ -377,6 +463,12 @@ export default function PedidoPage({ params }: { params: Promise<{ id: string }>
             <dt className="muted w-28 shrink-0">Recebimento</dt>
             <dd className="font-medium">{DELIVERY_TYPE_LABEL[order.deliveryType]}</dd>
           </div>
+          {order.scheduledFor && (
+            <div className="flex gap-2">
+              <dt className="muted w-28 shrink-0">Horário</dt>
+              <dd className="font-medium">{formatDateTime(order.scheduledFor)}</dd>
+            </div>
+          )}
           {order.addressSnapshot && (
             <div className="flex gap-2">
               <dt className="muted w-28 shrink-0">Endereço</dt>

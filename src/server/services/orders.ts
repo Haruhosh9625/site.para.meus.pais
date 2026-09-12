@@ -2,9 +2,10 @@ import type { OrderStatus, Prisma } from "@prisma/client";
 import { prisma } from "../db";
 import { badRequest, conflict, forbidden, notFound } from "../errors";
 import { audit } from "../audit";
-import { notifyOrderStatus } from "./notifications";
+import { notify, notifyOrderStatus } from "./notifications";
 import { buildQuote, assertQuoteIsCheckoutable } from "./pricing";
 import { getSettings, getStoreStatus } from "./settings";
+import { validateScheduledFor } from "./scheduling";
 import type { z } from "zod";
 import type { createOrderSchema } from "../validation";
 
@@ -16,13 +17,21 @@ import type { createOrderSchema } from "../validation";
  * finalizado não muda mais de estado.
  */
 
-/** Transições permitidas a partir de cada status. */
+/**
+ * Transições permitidas a partir de cada status.
+ *
+ * Depois do pagamento o pedido fica AGENDADO até a cozinha começar — é o
+ * estado em que ele passa a maior parte do tempo, esperando a hora marcada.
+ * RECEIVED continua aceito porque pedidos antigos (de antes do agendamento)
+ * ainda estão nele.
+ */
 const TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
-  AWAITING_PAYMENT: ["PAYMENT_CONFIRMED", "RECEIVED", "CANCELLED"],
-  PAYMENT_CONFIRMED: ["RECEIVED", "PREPARING", "CANCELLED"],
+  AWAITING_PAYMENT: ["PAYMENT_CONFIRMED", "SCHEDULED", "CANCELLED"],
+  PAYMENT_CONFIRMED: ["SCHEDULED", "PREPARING", "CANCELLED"],
+  SCHEDULED: ["PREPARING", "CANCELLED"],
   RECEIVED: ["PREPARING", "CANCELLED"],
   PREPARING: ["READY", "CANCELLED"],
-  READY: ["OUT_FOR_DELIVERY", "PICKED_UP", "DELIVERED", "CANCELLED"],
+  READY: ["PICKED_UP", "OUT_FOR_DELIVERY", "DELIVERED", "CANCELLED"],
   OUT_FOR_DELIVERY: ["DELIVERED", "CANCELLED"],
   DELIVERED: [],
   PICKED_UP: [],
@@ -66,6 +75,15 @@ export async function createOrder(userId: string, input: CreateOrderInput) {
         : "A DS Espetos está fechada no momento.",
     );
   }
+
+  /**
+   * Valida o horário da retirada ANTES de qualquer escrita.
+   *
+   * Confere expediente, antecedência mínima e capacidade da janela. Se o
+   * horário não serve, o pedido não nasce — e a mensagem de erro explica
+   * exatamente o motivo para o cliente.
+   */
+  const scheduledFor = await validateScheduledFor(input.scheduledFor);
 
   // Idempotência: o mesmo clique duplicado não gera dois pedidos.
   if (input.idempotencyKey) {
@@ -188,6 +206,7 @@ export async function createOrder(userId: string, input: CreateOrderInput) {
         totalCents: quote.totalCents,
         changeForCents:
           input.paymentMethod === "CASH" && input.changeForCents ? input.changeForCents : null,
+        scheduledFor,
         couponId: quote.coupon?.id ?? null,
         couponCode: quote.coupon?.code ?? null,
         addressId,
@@ -375,4 +394,64 @@ export async function cancelOrder(params: {
 /** Formata o número do pedido como #000123. */
 export function formatOrderNumber(number: number): string {
   return `#${String(number).padStart(6, "0")}`;
+}
+
+/**
+ * Remarca a retirada de um pedido.
+ *
+ * Vale enquanto a cozinha não começou: depois de "Em preparação" o espeto já
+ * está na chapa e mudar a hora não faz sentido. A validação é a mesma da
+ * criação — expediente, antecedência e capacidade — ignorando o próprio
+ * pedido na contagem da janela.
+ */
+export async function rescheduleOrder(params: {
+  orderId: string;
+  scheduledFor: string | Date;
+  changedBy: string;
+  byCustomer?: boolean;
+}) {
+  const order = await prisma.order.findUnique({
+    where: { id: params.orderId },
+    select: { id: true, status: true, number: true, userId: true },
+  });
+  if (!order) throw notFound("Pedido não encontrado.");
+
+  const REMARCAVEL: OrderStatus[] = ["AWAITING_PAYMENT", "PAYMENT_CONFIRMED", "SCHEDULED", "RECEIVED"];
+  if (!REMARCAVEL.includes(order.status)) {
+    throw conflict(
+      "Este pedido já está em preparação. Fale com a loja para mudar o horário.",
+    );
+  }
+
+  const scheduledFor = await validateScheduledFor(params.scheduledFor, {
+    ignoreOrderId: order.id,
+  });
+
+  const updated = await prisma.order.update({
+    where: { id: order.id },
+    data: { scheduledFor },
+  });
+
+  await audit({
+    action: "order.rescheduled",
+    userId: params.changedBy,
+    entity: "Order",
+    entityId: order.id,
+    metadata: { number: order.number, scheduledFor: scheduledFor.toISOString() },
+  });
+
+  await notify({
+    userId: order.userId,
+    orderId: order.id,
+    event: "order.rescheduled",
+    title: `Pedido #${String(order.number).padStart(6, "0")} — horário alterado`,
+    body: `A retirada foi remarcada para ${new Intl.DateTimeFormat("pt-BR", {
+      day: "2-digit",
+      month: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    }).format(scheduledFor)}.`,
+  });
+
+  return updated;
 }

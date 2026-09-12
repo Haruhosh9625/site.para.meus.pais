@@ -8,9 +8,10 @@ export const APP_NAME = "DS Espetos";
 export const ORDER_STATUS_LABEL: Record<OrderStatus, string> = {
   AWAITING_PAYMENT: "Aguardando pagamento",
   PAYMENT_CONFIRMED: "Pagamento confirmado",
+  SCHEDULED: "Agendado",
   RECEIVED: "Pedido recebido",
   PREPARING: "Em preparação",
-  READY: "Pronto",
+  READY: "Pronto para retirada",
   OUT_FOR_DELIVERY: "Saiu para entrega",
   DELIVERED: "Entregue",
   PICKED_UP: "Retirado",
@@ -39,24 +40,30 @@ export const DELIVERY_TYPE_LABEL: Record<DeliveryType, string> = {
   PICKUP: "Retirada no estabelecimento",
 };
 
-/** Ordem de exibição da linha do tempo, por tipo de recebimento. */
+/**
+ * Ordem de exibição da linha do tempo.
+ *
+ * PICKUP_FLOW é o fluxo do agendamento, que é como a loja opera hoje:
+ * o pedido fica "Agendado" até chegar a hora de ir para a chapa.
+ * DELIVERY_FLOW permanece para o dia em que a entrega for ligada.
+ */
+export const PICKUP_FLOW: OrderStatus[] = [
+  "AWAITING_PAYMENT",
+  "PAYMENT_CONFIRMED",
+  "SCHEDULED",
+  "PREPARING",
+  "READY",
+  "PICKED_UP",
+];
+
 export const DELIVERY_FLOW: OrderStatus[] = [
   "AWAITING_PAYMENT",
   "PAYMENT_CONFIRMED",
-  "RECEIVED",
+  "SCHEDULED",
   "PREPARING",
   "READY",
   "OUT_FOR_DELIVERY",
   "DELIVERED",
-];
-
-export const PICKUP_FLOW: OrderStatus[] = [
-  "AWAITING_PAYMENT",
-  "PAYMENT_CONFIRMED",
-  "RECEIVED",
-  "PREPARING",
-  "READY",
-  "PICKED_UP",
 ];
 
 export const FINAL_STATUSES: OrderStatus[] = ["DELIVERED", "PICKED_UP", "CANCELLED"];
@@ -84,6 +91,7 @@ export function statusTone(status: OrderStatus): StatusTone {
     case "AWAITING_PAYMENT":
       return "warning";
     case "PAYMENT_CONFIRMED":
+    case "SCHEDULED":
     case "RECEIVED":
       return "info";
     case "PREPARING":

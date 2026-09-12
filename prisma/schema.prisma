@@ -45,14 +45,18 @@ enum PaymentStatus {
   CANCELLED // Cancelado antes de pagar
 }
 
-/// Fluxo:
-/// AWAITING_PAYMENT -> PAYMENT_CONFIRMED -> RECEIVED -> PREPARING -> READY
-///   -> (entrega) OUT_FOR_DELIVERY -> DELIVERED
-///   -> (retirada) PICKED_UP
+/// Fluxo do AGENDAMENTO (a loja ainda não entrega, só retirada):
+/// AWAITING_PAYMENT -> PAYMENT_CONFIRMED -> SCHEDULED -> PREPARING -> READY
+///   -> PICKED_UP
+///
+/// OUT_FOR_DELIVERY e DELIVERED continuam existindo para o dia em que a
+/// entrega for ligada — o enum não muda quando isso acontecer, só a
+/// configuração. RECEIVED é mantido pelos pedidos antigos do histórico.
 /// CANCELLED pode ocorrer a partir de qualquer estado não-final.
 enum OrderStatus {
   AWAITING_PAYMENT
   PAYMENT_CONFIRMED
+  SCHEDULED
   RECEIVED
   PREPARING
   READY
@@ -226,6 +230,13 @@ model Order {
   /// Quanto o cliente vai entregar em dinheiro (para calcular o troco)
   changeForCents Int? @map("change_for_cents")
 
+  /// Horário combinado para a retirada.
+  ///
+  /// É o coração do agendamento: o cliente escolhe a hora, o servidor
+  /// confere se cai dentro do expediente e se ainda há vaga na janela.
+  /// Nulo apenas nos pedidos antigos, criados antes do agendamento existir.
+  scheduledFor DateTime? @map("scheduled_for")
+
   couponId   String? @map("coupon_id")
   couponCode String? @map("coupon_code")
 
@@ -261,6 +272,9 @@ model Order {
   @@index([status])
   @@index([paymentStatus])
   @@index([createdAt])
+  // A agenda do dia e a contagem de capacidade por janela consultam por
+  // scheduledFor + status, então o índice composto cobre as duas.
+  @@index([scheduledFor, status])
   @@map("orders")
 }
 
@@ -427,6 +441,22 @@ model Settings {
   /// Quando true, o horário é ignorado e vale apenas `manualOpen`.
   useManualSwitch Boolean @default(false) @map("use_manual_switch")
 
+  // ------------------------------ agendamento -------------------------------
+  /// Antecedência mínima, em minutos, entre agendar e retirar.
+  /// Ninguém agenda para "agora": a cozinha precisa de tempo.
+  minLeadMinutes Int @default(30) @map("min_lead_minutes")
+
+  /// Tamanho da janela, em minutos, usada para contar a capacidade.
+  /// Com 30, os horários 19:00, 19:10 e 19:25 caem na mesma janela.
+  slotWindowMinutes Int @default(30) @map("slot_window_minutes")
+
+  /// Quantos agendamentos cabem em cada janela. 0 = sem limite.
+  slotCapacity Int @default(0) @map("slot_capacity")
+
+  /// Quantos dias à frente o cliente pode agendar.
+  /// 0 = somente hoje (é como a DS Espetos opera hoje).
+  scheduleHorizonDays Int @default(0) @map("schedule_horizon_days")
+
   deliveryFeeCents       Int @default(0) @map("delivery_fee_cents")
   minOrderCents          Int @default(0) @map("min_order_cents")
   freeDeliveryAboveCents Int @default(0) @map("free_delivery_above_cents")
@@ -436,7 +466,9 @@ model Settings {
   acceptPix     Boolean @default(true) @map("accept_pix")
   acceptCard    Boolean @default(true) @map("accept_card")
   acceptCash    Boolean @default(true) @map("accept_cash")
-  allowDelivery Boolean @default(true) @map("allow_delivery")
+  /// A DS Espetos ainda não entrega. O campo continua existindo para o dia
+  /// em que passar a entregar: é só ligar aqui, sem mexer em código.
+  allowDelivery Boolean @default(false) @map("allow_delivery")
   allowPickup   Boolean @default(true) @map("allow_pickup")
 
   updatedAt DateTime @updatedAt @map("updated_at")

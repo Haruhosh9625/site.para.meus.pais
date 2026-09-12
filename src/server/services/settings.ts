@@ -151,6 +151,15 @@ export async function getPublicSettings() {
     freeDeliveryAboveCents: settings.freeDeliveryAboveCents,
     prepTimeMinutes: settings.prepTimeMinutes,
     deliveryTimeMinutes: settings.deliveryTimeMinutes,
+    // Regras de agendamento: a tela usa para orientar o cliente ANTES de ele
+    // errar o horário. Quem decide se o horário vale continua sendo o
+    // servidor, em services/scheduling.ts.
+    scheduling: {
+      minLeadMinutes: settings.minLeadMinutes,
+      slotWindowMinutes: settings.slotWindowMinutes,
+      slotCapacity: settings.slotCapacity,
+      horizonDays: settings.scheduleHorizonDays,
+    },
     paymentMethods: {
       pix: settings.acceptPix,
       card: settings.acceptCard,

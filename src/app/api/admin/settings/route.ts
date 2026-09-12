@@ -42,6 +42,10 @@ export const PUT = route(async (request: Request) => {
       openingHours: body.openingHours as never,
       manualOpen: body.manualOpen,
       useManualSwitch: body.useManualSwitch,
+      minLeadMinutes: body.minLeadMinutes,
+      slotWindowMinutes: body.slotWindowMinutes,
+      slotCapacity: body.slotCapacity,
+      scheduleHorizonDays: body.scheduleHorizonDays,
       deliveryFeeCents: body.deliveryFeeCents,
       minOrderCents: body.minOrderCents,
       freeDeliveryAboveCents: body.freeDeliveryAboveCents,
@@ -65,6 +69,8 @@ export const PUT = route(async (request: Request) => {
       deliveryFeeCents: body.deliveryFeeCents,
       minOrderCents: body.minOrderCents,
       manualOpen: body.manualOpen,
+      slotCapacity: body.slotCapacity,
+      slotWindowMinutes: body.slotWindowMinutes,
     },
   });
 

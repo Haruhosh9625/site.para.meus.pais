@@ -6,6 +6,23 @@
  * por código de servidor. Arquivos com "use client" nunca o alcançam.
  */
 
+/**
+ * Fuso horário da loja.
+ *
+ * O agendamento é todo feito em hora de balcão: "18:00" no horário de
+ * funcionamento significa 18:00 na DS Espetos, não 18:00 UTC. Servidores de
+ * nuvem rodam em UTC por padrão, e sem isto um expediente das 18:00 às 23:00
+ * viraria 15:00 às 20:00 na prática — pedidos legítimos recusados e horário
+ * fora do expediente aceito.
+ *
+ * Node aplica a mudança de verdade quando `process.env.TZ` é atribuído (o
+ * setter chama tzset), e este módulo é o primeiro carregado por todo código
+ * de servidor. Quem hospeda pode sobrescrever com a variável TZ.
+ */
+if (!process.env.TZ || process.env.TZ.trim() === "") {
+  process.env.TZ = "America/Sao_Paulo";
+}
+
 function required(name: string, fallbackInDev?: string): string {
   const value = process.env[name];
   if (value && value.trim() !== "") return value;
@@ -42,6 +59,11 @@ export const env = {
   },
   get appUrl() {
     return optional("APP_URL", "http://localhost:3000").replace(/\/+$/, "");
+  },
+
+  /** Fuso usado em todo cálculo de horário (agendamento, expediente). */
+  get timezone() {
+    return optional("TZ", "America/Sao_Paulo");
   },
 
   /** Duração da sessão em dias. */

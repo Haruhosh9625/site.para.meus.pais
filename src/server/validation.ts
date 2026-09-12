@@ -127,6 +127,22 @@ export const quoteSchema = z.object({
   couponCode: optionalText(40),
 });
 
+/**
+ * Horário de retirada aceito pela API.
+ *
+ * Duas formas: "19:30" (hora de balcão, o que a tela do cliente envia) ou
+ * uma data ISO completa. Quem resolve qual dia é o servidor, em
+ * services/scheduling.ts — aqui só conferimos o formato.
+ */
+const scheduledForField = (message: string) =>
+  z
+    .string()
+    .trim()
+    .min(1, message)
+    .refine((value) => /^([01]\d|2[0-3]):[0-5]\d$/.test(value) || !Number.isNaN(Date.parse(value)), {
+      message: "Horário de retirada inválido.",
+    });
+
 export const createOrderSchema = z.object({
   items: z.array(cartItemSchema).min(1, "Adicione pelo menos um item ao carrinho.").max(60),
   deliveryType: z.enum(["DELIVERY", "PICKUP"]),
@@ -137,6 +153,14 @@ export const createOrderSchema = z.object({
   notes: optionalText(500),
   /** Valor em centavos que o cliente vai entregar (pagamento em dinheiro). */
   changeForCents: z.number().int().min(0).max(10_000_000).optional(),
+  /**
+   * Horário combinado para a retirada: "19:30" ou uma data ISO.
+   *
+   * A loja trabalha por agendamento: quem decide se o horário vale é o
+   * servidor (services/scheduling.ts), não este schema — aqui só conferimos
+   * o formato.
+   */
+  scheduledFor: scheduledForField("Escolha o horário da retirada."),
   idempotencyKey: z.string().min(8).max(80).optional(),
 });
 
@@ -196,6 +220,10 @@ export const settingsSchema = z.object({
   openingHours: z.array(openingHourSchema).length(7, "Informe os 7 dias da semana."),
   manualOpen: z.boolean(),
   useManualSwitch: z.boolean(),
+  minLeadMinutes: z.number().int().min(0).max(600),
+  slotWindowMinutes: z.number().int().min(5).max(240),
+  slotCapacity: z.number().int().min(0).max(999),
+  scheduleHorizonDays: z.number().int().min(0).max(30),
   deliveryFeeCents: z.number().int().min(0).max(100_000),
   minOrderCents: z.number().int().min(0).max(100_000),
   freeDeliveryAboveCents: z.number().int().min(0).max(1_000_000),
@@ -217,10 +245,15 @@ export const deliveryAreaSchema = z.object({
   active: z.boolean().optional(),
 });
 
+export const rescheduleSchema = z.object({
+  scheduledFor: scheduledForField("Escolha o novo horário."),
+});
+
 export const orderStatusSchema = z.object({
   status: z.enum([
     "AWAITING_PAYMENT",
     "PAYMENT_CONFIRMED",
+    "SCHEDULED",
     "RECEIVED",
     "PREPARING",
     "READY",

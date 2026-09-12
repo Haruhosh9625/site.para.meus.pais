@@ -2,6 +2,7 @@ import { prisma } from "@/server/db";
 import { route, readJson, ok } from "@/server/api";
 import { updateProfileSchema } from "@/server/validation";
 import { assertCsrf, getCurrentUser, requireUser } from "@/server/auth";
+import { getIdentityProvider } from "@/server/identity";
 import { conflict } from "@/server/errors";
 import { audit } from "@/server/audit";
 
@@ -39,12 +40,44 @@ export const PATCH = route(async (request: Request) => {
     }
   }
 
+  /*
+    Trocar de e-mail é trocar a credencial de acesso, então o provedor de
+    identidade precisa saber. Alguns provedores (o Supabase, por padrão)
+    exigem confirmação no endereço novo: até o clique no link, o e-mail do
+    perfil NÃO pode mudar aqui, senão a pessoa não conseguiria mais entrar.
+  */
+  let emailAplicado = true;
+  if (body.email !== current.email) {
+    const record = await prisma.user.findUniqueOrThrow({
+      where: { id: current.id },
+      select: { authUserId: true },
+    });
+    const resultado = await getIdentityProvider().updateEmail({
+      authId: record.authUserId ?? current.id,
+      email: body.email,
+    });
+    emailAplicado = resultado.applied;
+  }
+
   const user = await prisma.user.update({
     where: { id: current.id },
-    data: { name: body.name, phone: body.phone, email: body.email },
+    data: {
+      name: body.name,
+      phone: body.phone,
+      ...(emailAplicado ? { email: body.email } : {}),
+    },
     select: { id: true, name: true, email: true, phone: true, role: true, createdAt: true },
   });
 
   await audit({ action: "user.profile_updated", userId: current.id, entity: "User", entityId: current.id });
-  return ok({ user });
+
+  return ok({
+    user,
+    ...(emailAplicado
+      ? {}
+      : {
+          message:
+            "Enviamos um link para o novo e-mail. Ele passa a valer depois que você confirmar.",
+        }),
+  });
 });

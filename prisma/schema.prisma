@@ -15,8 +15,15 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  /// Conexão da aplicação. No Supabase é a do pooler (porta 6543): em
+  /// servidor sem estado, abrir conexão direta a cada requisição esgota o
+  /// limite de conexões do banco.
+  url       = env("DATABASE_URL")
+  /// Conexão direta (porta 5432), usada só pelas migrations — o pooler não
+  /// dá conta de DDL. É obrigatória: fora do Supabase, repita a mesma
+  /// string da DATABASE_URL.
+  directUrl = env("DIRECT_URL")
 }
 
 // --------------------------------- Enums ----------------------------------
@@ -88,15 +95,28 @@ enum NotificationStatus {
 // --------------------------------- Usuários --------------------------------
 
 model User {
-  id           String   @id @default(cuid())
-  name         String
-  email        String   @unique
-  phone        String
-  passwordHash String   @map("password_hash")
-  role         Role     @default(CUSTOMER)
-  active       Boolean  @default(true)
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
+  id    String @id @default(cuid())
+  name  String
+  email String @unique
+  phone String
+
+  /// Identificador da credencial no provedor de identidade.
+  ///
+  /// Com o Supabase Auth é o UUID de auth.users; com o provedor local é o
+  /// próprio id desta linha. É por este campo que a sessão encontra o
+  /// cliente, e não pelo e-mail: e-mail muda, identidade não.
+  authUserId String? @unique @map("auth_user_id")
+
+  /// Hash scrypt da senha — SOMENTE no provedor local.
+  ///
+  /// Nulo quando quem guarda a credencial é o Supabase Auth: a senha nunca
+  /// passa por este banco. Nunca é exposto por nenhuma rota.
+  passwordHash String? @map("password_hash")
+
+  role      Role     @default(CUSTOMER)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   addresses           Address[]
   orders              Order[]

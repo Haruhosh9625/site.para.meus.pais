@@ -6,7 +6,22 @@ import { hashPassword, validatePasswordStrength } from "../src/server/password";
 /**
  * Criação segura do administrador — `npm run admin:create`.
  *
- * Duas formas de usar:
+ * O comportamento depende de quem guarda a senha (AUTH_PROVIDER):
+ *
+ * ── Supabase Auth (produção) ──
+ * A senha mora no Supabase e este script não tem como criá-la sem a chave
+ * de serviço — que de propósito não circula por aqui. Então o caminho é:
+ *
+ *   1. a pessoa cria a conta normalmente no site, em /cadastro;
+ *   2. `npm run admin:create` PROMOVE essa conta a ADMIN.
+ *
+ * Sai melhor assim: a senha é escolhida pela própria pessoa, nunca passa
+ * por um script, por um arquivo ou pelo histórico do shell.
+ *
+ *   ADMIN_EMAIL=dono@exemplo.com npm run admin:create
+ *
+ * ── Provedor local (desenvolvimento) ──
+ * A senha mora neste banco, e o script cria a conta inteira. Duas formas:
  *
  *   1. Interativa (recomendada): a senha é digitada no terminal, sem eco,
  *      e não fica no histórico do shell nem em nenhum arquivo.
@@ -21,6 +36,45 @@ import { hashPassword, validatePasswordStrength } from "../src/server/password";
  */
 
 const prisma = new PrismaClient();
+
+/** Mesma dedução de src/server/env.ts, sem importar o módulo do servidor. */
+function provedorDeIdentidade(): "supabase" | "local" {
+  const declarado = (process.env.AUTH_PROVIDER ?? "").trim().toLowerCase();
+  if (declarado === "supabase" || declarado === "local") return declarado;
+  const url = process.env.SUPABASE_URL?.trim();
+  const key = process.env.SUPABASE_PUBLISHABLE_KEY?.trim() || process.env.SUPABASE_ANON_KEY?.trim();
+  return url && key ? "supabase" : "local";
+}
+
+/** Promove uma conta existente a ADMIN. Não toca em senha. */
+async function promover(email: string) {
+  const existing = await prisma.user.findUnique({
+    where: { email },
+    select: { id: true, role: true },
+  });
+
+  if (!existing) {
+    throw new Error(
+      `Não há conta com o e-mail ${email}.\n\n` +
+        "Com o Supabase Auth a senha é definida pela própria pessoa. Peça para ela:\n" +
+        "  1. abrir o site e criar a conta em /cadastro;\n" +
+        "  2. confirmar o e-mail, se o projeto exigir confirmação.\n" +
+        "Depois rode este comando de novo para promovê-la a administradora.",
+    );
+  }
+
+  if (existing.role === "ADMIN") {
+    await prisma.user.update({ where: { id: existing.id }, data: { active: true } });
+    console.log(`${email} já é administrador (conta reativada, se estava inativa).`);
+    return;
+  }
+
+  await prisma.user.update({
+    where: { id: existing.id },
+    data: { role: "ADMIN", active: true },
+  });
+  console.log(`Administrador: ${email} promovido a ADMIN.`);
+}
 
 /** Lê a senha sem exibi-la no terminal. */
 async function promptHidden(question: string): Promise<string> {
@@ -54,6 +108,7 @@ async function ask(question: string): Promise<string> {
 }
 
 async function main() {
+  const provider = provedorDeIdentidade();
   const interactive = !process.env.ADMIN_EMAIL || !process.env.ADMIN_PASSWORD;
 
   const email = (process.env.ADMIN_EMAIL ?? (await ask("E-mail do administrador: ")))
@@ -61,6 +116,11 @@ async function main() {
     .toLowerCase();
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     throw new Error("E-mail inválido.");
+  }
+
+  if (provider === "supabase") {
+    await promover(email);
+    return;
   }
 
   const name =
@@ -93,7 +153,7 @@ async function main() {
     }
     await prisma.user.update({
       where: { id: existing.id },
-      data: { passwordHash, role: "ADMIN", active: true },
+      data: { passwordHash, role: "ADMIN", active: true, authUserId: existing.id },
     });
     // Invalida todas as sessões antigas após a troca de senha.
     await prisma.session.deleteMany({ where: { userId: existing.id } });
@@ -101,7 +161,7 @@ async function main() {
     return;
   }
 
-  await prisma.user.create({
+  const criado = await prisma.user.create({
     data: {
       name: name.trim() || "Administrador",
       email,
@@ -109,7 +169,10 @@ async function main() {
       passwordHash,
       role: "ADMIN",
     },
+    select: { id: true },
   });
+  // No provedor local a identidade é o próprio id da linha.
+  await prisma.user.update({ where: { id: criado.id }, data: { authUserId: criado.id } });
   console.log(`Administrador criado: ${email}`);
 }
 

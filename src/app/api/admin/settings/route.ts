@@ -15,6 +15,8 @@ export const GET = route(async () => {
     // Só o NOME do gateway e se ele está configurado. Nenhuma chave sai daqui.
     paymentProviders: listProviders(),
     activeProvider: env.paymentProvider,
+    // Diagnóstico: quem está guardando as senhas. Nome, nunca credencial.
+    identityProvider: env.authProvider,
   });
 });
 

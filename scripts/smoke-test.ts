@@ -27,6 +27,21 @@ const ADMIN_EMAIL = process.env.SEED_ADMIN_EMAIL ?? "admin@dsespetos.local";
 const ADMIN_PASSWORD = process.env.SEED_ADMIN_PASSWORD ?? "";
 const WEBHOOK_SECRET = process.env.MANUAL_WEBHOOK_SECRET ?? "";
 
+/**
+ * Provedor de identidade em uso — a mesma dedução de src/server/env.ts.
+ *
+ * Algumas asserções mudam de forma com o Supabase (a senha não fica neste
+ * banco, o cadastro pode exigir confirmação por e-mail). O teste roda nos
+ * dois modos; o padrão, sem as variáveis do Supabase, é o provedor local.
+ */
+const AUTH_PROVIDER: "supabase" | "local" = (() => {
+  const declarado = (process.env.AUTH_PROVIDER ?? "").trim().toLowerCase();
+  if (declarado === "supabase" || declarado === "local") return declarado;
+  const url = process.env.SUPABASE_URL?.trim();
+  const key = process.env.SUPABASE_PUBLISHABLE_KEY?.trim() || process.env.SUPABASE_ANON_KEY?.trim();
+  return url && key ? "supabase" : "local";
+})();
+
 const prisma = new PrismaClient();
 
 let passed = 0;
@@ -376,9 +391,26 @@ async function main() {
   });
   check("E-mail duplicado é rejeitado", !duplicate.ok && duplicate.status === 409);
 
-  const stored = await prisma.user.findUnique({ where: { email }, select: { passwordHash: true } });
-  check("Senha é gravada como hash scrypt", stored?.passwordHash.startsWith("scrypt$") === true);
-  check("Senha em texto puro não aparece no banco", !stored?.passwordHash.includes(password));
+  /*
+    Onde a senha mora depende do provedor de identidade (AUTH_PROVIDER).
+    Com o Supabase Auth ela não passa por este banco — e o teste confere
+    justamente isso. Com o provedor local, confere o hash scrypt.
+  */
+  const stored = await prisma.user.findUnique({
+    where: { email },
+    select: { passwordHash: true, authUserId: true },
+  });
+  check("Conta é ligada a uma identidade", Boolean(stored?.authUserId));
+
+  if (AUTH_PROVIDER === "supabase") {
+    check("Com o Supabase, a senha não fica neste banco", stored?.passwordHash === null);
+  } else {
+    check("Senha é gravada como hash scrypt", stored?.passwordHash?.startsWith("scrypt$") === true);
+    check(
+      "Senha em texto puro não aparece no banco",
+      stored?.passwordHash?.includes(password) === false,
+    );
+  }
 
   const me = await customer.request<{ user: { email: string } }>("/api/me");
   check("GET /api/me devolve o usuário logado", me.data?.user.email === email);
@@ -1110,8 +1142,20 @@ async function main() {
     const settingsAdmin = await admin.request<{
       settings: { deliveryFeeCents: number; minOrderCents: number };
       paymentProviders: Array<{ id: string }>;
+      identityProvider: string;
     }>("/api/admin/settings");
     check("Configurações do admin respondem", settingsAdmin.ok);
+    check(
+      `Provedor de identidade ativo é "${AUTH_PROVIDER}"`,
+      settingsAdmin.data?.identityProvider === AUTH_PROVIDER,
+      settingsAdmin.data?.identityProvider,
+    );
+    check(
+      "Nenhuma chave do Supabase vaza para o painel",
+      !/sb_(publishable|secret)_|eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9/.test(
+        JSON.stringify(settingsAdmin.data),
+      ),
+    );
     check("Lista de gateways é exposta", (settingsAdmin.data?.paymentProviders.length ?? 0) >= 5);
     check(
       "Nenhuma credencial de gateway vaza para o painel",

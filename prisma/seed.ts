@@ -177,10 +177,31 @@ async function seedSettings() {
  *
  * A senha NUNCA está no código: vem de SEED_ADMIN_PASSWORD. Sem essa
  * variável, nenhum admin é criado e o seed apenas avisa como fazer.
+ *
+ * Com o Supabase Auth a senha não mora neste banco, então o seed não tem
+ * como criá-la: quem for administrar cria a conta no site e é promovida
+ * depois, com `npm run admin:create`. O seed só avisa e segue.
  */
+function provedorDeIdentidade(): "supabase" | "local" {
+  const declarado = (process.env.AUTH_PROVIDER ?? "").trim().toLowerCase();
+  if (declarado === "supabase" || declarado === "local") return declarado;
+  const url = process.env.SUPABASE_URL?.trim();
+  const key = process.env.SUPABASE_PUBLISHABLE_KEY?.trim() || process.env.SUPABASE_ANON_KEY?.trim();
+  return url && key ? "supabase" : "local";
+}
+
 async function seedAdmin() {
   const email = process.env.SEED_ADMIN_EMAIL?.trim().toLowerCase();
   const password = process.env.SEED_ADMIN_PASSWORD;
+
+  if (provedorDeIdentidade() === "supabase") {
+    console.log(
+      "  Administrador: a senha fica no Supabase Auth, fora deste banco.\n" +
+        "                 Crie a conta em /cadastro e rode:\n" +
+        "                   ADMIN_EMAIL=<e-mail> npm run admin:create",
+    );
+    return;
+  }
 
   if (!email || !password) {
     console.log(
@@ -208,7 +229,7 @@ async function seedAdmin() {
     return;
   }
 
-  await prisma.user.create({
+  const criado = await prisma.user.create({
     data: {
       name: process.env.SEED_ADMIN_NAME?.trim() || "Administrador",
       email,
@@ -216,7 +237,10 @@ async function seedAdmin() {
       passwordHash: await hashPassword(password),
       role: "ADMIN",
     },
+    select: { id: true },
   });
+  // No provedor local a identidade é o próprio id da linha.
+  await prisma.user.update({ where: { id: criado.id }, data: { authUserId: criado.id } });
   console.log(`  Administrador: ${email} criado`);
 }
 

@@ -71,6 +71,50 @@ export const env = {
     return optionalNumber("SESSION_TTL_DAYS", 30);
   },
 
+  /**
+   * Provedor de identidade: supabase | local
+   *
+   * Sem AUTH_PROVIDER declarado, o padrão é `supabase` quando as variáveis
+   * do Supabase estão preenchidas e `local` quando não estão — assim o
+   * desenvolvimento e o teste end-to-end rodam sem credencial externa.
+   *
+   * Em produção o provedor local só entra se AUTH_PROVIDER=local estiver
+   * declarado explicitamente (ver `assertAuthProviderSane`). Uma variável
+   * esquecida no deploy precisa falhar alto, não cair sozinha para a senha
+   * guardada neste banco.
+   */
+  get authProvider(): "supabase" | "local" {
+    const declarado = optional("AUTH_PROVIDER").toLowerCase();
+    if (declarado === "supabase" || declarado === "local") return declarado;
+    return this.supabase.url && this.supabase.publishableKey ? "supabase" : "local";
+  },
+
+  get authProviderDeclared() {
+    return optional("AUTH_PROVIDER").toLowerCase();
+  },
+
+  supabase: {
+    /** https://<ref>.supabase.co — painel > Project Settings > Data API */
+    get url() {
+      return optional("SUPABASE_URL").replace(/\/+$/, "");
+    },
+    /**
+     * Chave publicável (ou a legada `anon`).
+     *
+     * É pública por natureza: em qualquer aplicação Supabase ela vai para o
+     * navegador. Não confere permissão nenhuma por si — quem decide é o
+     * RLS e, aqui, o papel guardado na tabela `users`.
+     */
+    get publishableKey() {
+      return optional("SUPABASE_PUBLISHABLE_KEY") || optional("SUPABASE_ANON_KEY");
+    },
+    /** Referência do projeto, deduzida da URL. Usada para achar os cookies. */
+    get projectRef() {
+      const match = /^https?:\/\/([^.]+)\./.exec(this.url);
+      return match?.[1] ?? "";
+    },
+  },
+
   /** Gateway ativo: manual | mercadopago | stripe | asaas | pagbank */
   get paymentProvider() {
     return optional("PAYMENT_PROVIDER", "manual").toLowerCase();

@@ -14,18 +14,19 @@ painel administrativo. Pensado primeiro para o celular.
 4. [Configuração do `.env`](#configuração-do-env)
 5. [Banco de dados](#banco-de-dados)
 6. [Administrador](#administrador)
-7. [Agendamento de retirada](#agendamento-de-retirada)
-8. [Gateway de pagamento](#gateway-de-pagamento)
-9. [Webhooks](#webhooks)
-10. [Rodando localmente](#rodando-localmente)
-11. [Testes](#testes)
-12. [Deploy](#deploy)
-13. [Backup e restauração](#backup-e-restauração)
-14. [Estrutura do projeto](#estrutura-do-projeto)
-15. [Rotas de API](#rotas-de-api)
-16. [Como o dinheiro é tratado](#como-o-dinheiro-é-tratado)
-17. [Segurança](#segurança)
-18. [Como estender](#como-estender)
+7. [Supabase: banco e login](#supabase-banco-e-login)
+8. [Agendamento de retirada](#agendamento-de-retirada)
+9. [Gateway de pagamento](#gateway-de-pagamento)
+10. [Webhooks](#webhooks)
+11. [Rodando localmente](#rodando-localmente)
+12. [Testes](#testes)
+13. [Deploy](#deploy)
+14. [Backup e restauração](#backup-e-restauração)
+15. [Estrutura do projeto](#estrutura-do-projeto)
+16. [Rotas de API](#rotas-de-api)
+17. [Como o dinheiro é tratado](#como-o-dinheiro-é-tratado)
+18. [Segurança](#segurança)
+19. [Como estender](#como-estender)
 
 ---
 
@@ -37,7 +38,8 @@ painel administrativo. Pensado primeiro para o celular.
 - Cardápio com foto, descrição, preço e controle `+` / `−` por item.
 - Carrinho com preço unitário e subtotal por linha, taxa de entrega,
   desconto e total — **tudo recalculado no servidor**.
-- Cadastro, login, logout, recuperação e troca de senha.
+- Cadastro, login, logout, recuperação e troca de senha — pelo
+  **Supabase Auth**, com a senha fora deste banco.
 - Endereços salvos, edição de dados pessoais, histórico de pedidos.
 - **Agendamento da retirada**: o cliente digita a hora em que vai buscar
   (hora livre), com sugestões de horários que ainda têm vaga; o servidor
@@ -70,6 +72,9 @@ painel administrativo. Pensado primeiro para o celular.
 
 **Infra**
 
+- **Supabase**: PostgreSQL para os dados e Supabase Auth para o login, com
+  a API REST pública do banco trancada (RLS sem policies + privilégios
+  revogados).
 - Pagamento confirmado apenas pelo backend, via webhook assinado com
   reconsulta do status no gateway.
 - Idempotência em pedidos e em eventos de webhook.
@@ -85,15 +90,17 @@ painel administrativo. Pensado primeiro para o celular.
 | Frontend      | Next.js 15 (App Router), React 19, TypeScript |
 | Estilo        | Tailwind CSS v4                            |
 | Backend       | Route Handlers do Next.js (Node runtime)   |
-| Banco         | PostgreSQL 14+                             |
+| Banco         | PostgreSQL 14+ (Supabase em produção)      |
 | ORM           | Prisma 6                                   |
-| Autenticação  | Sessões próprias em banco + cookie httpOnly |
-| Senhas        | scrypt (`node:crypto`), sem dependências   |
+| Autenticação  | Supabase Auth (`@supabase/ssr`), atrás de um contrato trocável |
+| Senhas        | guardadas pelo Supabase; no modo local, scrypt (`node:crypto`) |
+| CSRF          | token assinado (HMAC) + checagem de origem |
 | Validação     | Zod                                        |
 | Pagamentos    | Gateway configurável por variável de ambiente |
 
-Sem dependências além dessas: os gráficos são SVG escritos à mão, o
-PIX é gerado localmente e o QR/impressão usam recursos do navegador.
+Fora de Next, Prisma, Zod e do cliente do Supabase, nada mais: os gráficos
+são SVG escritos à mão, o PIX é gerado localmente e o QR/impressão usam
+recursos do navegador.
 
 ---
 
@@ -220,6 +227,121 @@ alterar a senha. Para redefinir a senha de um admin existente, use
 
 > Depois do primeiro acesso, troque a senha em **Minha conta → Senha**. Isso
 > encerra todas as outras sessões abertas.
+
+---
+
+## Supabase: banco e login
+
+O Supabase entra em dois papéis, e os dois são configuração — não código.
+
+### 1. Banco de dados
+
+É um PostgreSQL comum. O Prisma fala com ele pela senha do banco, do mesmo
+jeito que falaria com qualquer outro Postgres. Duas strings de conexão, em
+*Project Settings → Database → Connection string*:
+
+| Variável       | Qual usar                        | Para quê                   |
+| -------------- | -------------------------------- | -------------------------- |
+| `DATABASE_URL` | a do **pooler** (porta 6543)     | a aplicação                |
+| `DIRECT_URL`   | a **direta** (porta 5432)        | as migrations              |
+
+O pooler existe porque em servidor sem estado (Vercel) cada requisição
+abriria uma conexão nova e o banco esgotaria o limite. Migrations precisam
+da direta: o pooler não executa DDL.
+
+```bash
+npm run db:deploy   # aplica as migrations
+npm run db:seed     # cardápio e configurações iniciais
+```
+
+**A API REST do Supabase fica trancada.** O mesmo banco também é servido
+por uma API automática (PostgREST) que atende com a chave publicável — a
+que vai para o navegador de qualquer visitante. A migration
+`fecha_api_publica` liga RLS em todas as tabelas **sem nenhuma policy** e
+revoga os privilégios dos papéis `anon` e `authenticated`. Para eles, tudo
+é negado; o Prisma, que se conecta como dono das tabelas, passa por cima de
+RLS e não sente diferença (a suíte end-to-end passa igual com a tranca
+aplicada). Sem isso, quem tivesse a chave publicável leria `users`,
+`orders` e `payments` direto, por cima de toda a autorização da aplicação.
+
+### 2. Login (Supabase Auth)
+
+O Supabase guarda a credencial, faz o hash da senha e envia os e-mails de
+confirmação e de redefinição. **A senha nunca passa por este banco** —
+`users.password_hash` fica nulo.
+
+O que continua sendo desta aplicação: o perfil, os endereços, os pedidos e
+o **papel** (`CUSTOMER` / `ADMIN`). O papel é lido sempre da tabela `users`,
+nunca de dentro do JWT: um token adulterado não vira administrador.
+
+Tudo passa pelas rotas `/api/auth/*` desta aplicação, e não direto do
+navegador para o Supabase. É o que mantém em pé o limite de tentativas de
+login, o log de auditoria e a criação da linha de `users` na mesma
+requisição.
+
+**Variáveis:**
+
+```bash
+SUPABASE_URL="https://<ref>.supabase.co"    # Project Settings > Data API
+SUPABASE_PUBLISHABLE_KEY="sb_publishable_…" # Project Settings > API Keys
+AUTH_PROVIDER=""                            # vazio = supabase, quando as duas acima existem
+```
+
+A chave publicável é **pública por natureza** — em qualquer aplicação
+Supabase ela vai para o navegador. Não dá permissão nenhuma no banco (ver
+a tranca acima). A chave **service_role não é usada** por este projeto:
+nenhum fluxo precisa dela, e quanto menos segredo em circulação, melhor.
+
+**No painel do Supabase, configure:**
+
+1. *Authentication → URL Configuration*
+   - Site URL: `https://seu-dominio.com`
+   - Redirect URLs: `https://seu-dominio.com/redefinir-senha` e
+     `https://seu-dominio.com/login`
+
+   Sem isso o link de redefinição de senha não volta para o site.
+
+2. *Authentication → Sign In / Providers → Email* — a chave **Confirm
+   email**. Ligada, o cadastro exige o clique no e-mail antes do primeiro
+   acesso (a tela de cadastro já trata esse caso e mostra "Confirme seu
+   e-mail"). Desligada, o cliente entra na hora.
+
+3. *Project Settings → Authentication → SMTP Settings* — **obrigatório em
+   produção**. O servidor de e-mail padrão do Supabase é limitado a poucas
+   mensagens por hora e serve só para teste. Sem SMTP próprio (Resend,
+   SendGrid, SES, Brevo…), confirmação de e-mail e redefinição de senha não
+   chegam ao cliente.
+
+### O administrador com o Supabase
+
+A senha mora no Supabase, então nenhum script daqui pode criá-la. O caminho
+é a pessoa escolher a própria senha:
+
+```bash
+# 1. a pessoa cria a conta no site, em /cadastro
+# 2. promova essa conta:
+ADMIN_EMAIL=dono@exemplo.com npm run admin:create
+```
+
+Sai melhor assim: a senha nunca passa por um script, por um arquivo nem
+pelo histórico do shell.
+
+### O provedor local
+
+`AUTH_PROVIDER=local` guarda a senha neste banco, com hash scrypt e tabela
+de sessões. Serve para desenvolvimento e para `npm run test:e2e` rodar sem
+depender de rede ou de credencial externa.
+
+**Em produção o modo local não entra por descuido.** Se as variáveis do
+Supabase forem esquecidas no provedor de hospedagem, a aplicação derruba a
+requisição com uma mensagem clara em vez de voltar a guardar senhas no banco
+sem ninguém perceber. Para usá-lo em produção de propósito, declare
+`AUTH_PROVIDER=local`.
+
+Trocar de provedor é trocar uma variável: quem decide é
+`src/server/identity/index.ts`, e nenhuma tela ou rota conhece o provedor
+ativo. O painel mostra qual está em uso em `/api/admin/settings`
+(`identityProvider`), sem expor chave nenhuma.
 
 ---
 
@@ -590,7 +712,8 @@ src/
     db.ts                  Instância única do Prisma
     password.ts            Hash scrypt e verificação
     tokens.ts              Tokens opacos, hash, HMAC, comparação segura
-    auth.ts                Sessões, RBAC, CSRF, IP do cliente
+    auth.ts                Sessão, RBAC, CSRF, IP do cliente
+    csrf.ts                Token CSRF assinado (roda também no Edge)
     api.ts                 Envelope de resposta e tratamento de erros
     validation.ts          Schemas Zod de toda entrada
     rate-limit.ts          Janela fixa persistida no banco
@@ -607,6 +730,12 @@ src/
       notifications.ts     Notificações e adaptadores de canal
       analytics.ts         Consultas do dashboard e do financeiro
       admin-filters.ts     Filtros de período da área administrativa
+
+    identity/
+      types.ts             Contrato IdentityProvider
+      index.ts             Escolha do provedor e trava de produção
+      supabase.ts          Supabase Auth (produção)
+      local.ts             Senha neste banco (desenvolvimento e testes)
 
     payments/
       types.ts             Contrato PaymentProvider
@@ -779,10 +908,13 @@ Total                   R$ 38,00
 
 | Área                  | Como está implementado |
 | --------------------- | ---------------------- |
-| Senhas                | scrypt (N=2¹⁵, r=8, p=3), salt aleatório por senha, comparação em tempo constante. Texto puro nunca é gravado nem logado. |
-| Sessões               | Token opaco de 256 bits no cookie `httpOnly`; no banco fica apenas o SHA-256. `Secure` em produção, `SameSite=Lax`. |
-| Autorização           | Três camadas: middleware (redireciona sem cookie), layout do `/admin` (confere sessão e papel) e `requireAdmin()` em cada rota de API — que é onde os dados realmente estão. |
-| CSRF                  | Double-submit (cookie `ds_csrf` + cabeçalho `x-csrf-token`) **e** verificação de `Origin`/`Referer` em toda requisição que altera estado. |
+| Senhas                | Guardadas pelo **Supabase Auth** — não passam por este banco (`password_hash` fica nulo). No modo local: scrypt (N=2¹⁵, r=8, p=3), salt aleatório por senha, comparação em tempo constante. Texto puro nunca é gravado nem logado. |
+| Sessões               | JWT do Supabase em cookie `httpOnly`, renovado pelo middleware; validado com `getUser()`, que confere a assinatura junto ao servidor de autenticação — um cookie adulterado não passa. No modo local: token opaco de 256 bits, com apenas o SHA-256 no banco. `Secure` em produção, `SameSite=Lax`. |
+| Troca de senha        | Exige a senha atual (reautenticação) e derruba todas as sessões, em qualquer aparelho. O aparelho que trocou volta já com a senha nova. |
+| Autorização           | Três camadas: middleware (redireciona sem cookie), layout do `/admin` (confere sessão e papel) e `requireAdmin()` em cada rota de API — que é onde os dados realmente estão. O papel vem sempre da tabela `users`, nunca de dentro do JWT. |
+| CSRF                  | Token assinado com HMAC do `SESSION_SECRET` (cookie `ds_csrf` + cabeçalho `x-csrf-token`, comparados entre si e verificados na assinatura) **e** conferência de `Origin`/`Referer` em toda requisição que altera estado. Havendo sessão, o token é obrigatório — suprimir o cookie não passa livre. |
+| API REST do banco     | A API automática do Supabase (PostgREST) responde com a chave publicável, que é pública. A migration `fecha_api_publica` liga RLS em todas as tabelas **sem policies** e revoga os privilégios de `anon` e `authenticated`: para eles tudo é negado. O Prisma se conecta como dono das tabelas e passa por cima de RLS. |
+| Chave de serviço      | **Não é usada.** Nenhum fluxo precisa da `service_role`, e ela não é lida em lugar nenhum do código. |
 | SQL injection         | Prisma com queries parametrizadas. O único SQL cru (rate limit) usa parâmetros. |
 | XSS                   | React escapa por padrão; nenhum `dangerouslySetInnerHTML` no projeto. Uploads de SVG com `<script>` são rejeitados. CSP restritiva nos cabeçalhos. |
 | Validação             | Zod em toda entrada, no servidor. O frontend valida também, para dar retorno rápido — mas a decisão é sempre do servidor. |

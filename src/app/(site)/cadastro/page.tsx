@@ -45,6 +45,7 @@ export default function CadastroPage() {
   });
 
   const [loading, setLoading] = useState(false);
+  const [pendingConfirmation, setPendingConfirmation] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
@@ -64,13 +65,30 @@ export default function CadastroPage() {
 
     setLoading(true);
     try {
-      await api("/api/auth/register", {
-        method: "POST",
-        body: {
-          ...form,
-          address: withAddress ? { ...address, label: "Casa", isDefault: true } : undefined,
+      const resposta = await api<{ needsEmailConfirmation?: boolean; message?: string }>(
+        "/api/auth/register",
+        {
+          method: "POST",
+          body: {
+            ...form,
+            address: withAddress ? { ...address, label: "Casa", isDefault: true } : undefined,
+          },
         },
-      });
+      );
+
+      /*
+        Quando o provedor de identidade exige confirmação por e-mail, a conta
+        existe mas não há sessão aberta. Mandar a pessoa para o cardápio ali
+        seria jogá-la de volta no login sem explicação.
+      */
+      if (resposta.needsEmailConfirmation) {
+        setPendingConfirmation(
+          resposta.message ??
+            "Conta criada! Confirme seu e-mail pelo link que enviamos e depois entre no site.",
+        );
+        return;
+      }
+
       await refresh();
       push("Conta criada! Bom apetite.", "success");
       router.push("/cardapio");
@@ -81,6 +99,24 @@ export default function CadastroPage() {
     } finally {
       setLoading(false);
     }
+  }
+
+  // Conta criada, mas o provedor pede confirmação de e-mail: a tela troca
+  // de assunto em vez de tentar entrar e falhar.
+  if (pendingConfirmation) {
+    return (
+      <div className="mx-auto max-w-md px-4 py-16 text-center">
+        <p className="text-5xl" aria-hidden="true">📬</p>
+        <h1 className="mt-4 text-2xl font-extrabold tracking-tight">Confirme seu e-mail</h1>
+        <p className="muted mt-3">{pendingConfirmation}</p>
+        <p className="muted mt-2 text-sm">
+          Enviamos para <strong>{form.email}</strong>. Se não chegar, veja a caixa de spam.
+        </p>
+        <Link href="/login" className="mt-6 inline-block">
+          <Button>Ir para o login</Button>
+        </Link>
+      </div>
+    );
   }
 
   return (

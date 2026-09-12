@@ -1,12 +1,11 @@
 import { prisma } from "@/server/db";
 import { route, readJson, ok } from "@/server/api";
 import { changePasswordSchema } from "@/server/validation";
-import { assertCsrf, createSession, destroyAllSessions, getClientIp, requireUser } from "@/server/auth";
+import { assertCsrf, getClientIp, requireUser } from "@/server/auth";
+import { getIdentityProvider } from "@/server/identity";
 import { enforceRateLimit } from "@/server/rate-limit";
-import { hashPassword, verifyPassword } from "@/server/password";
 import { badRequest } from "@/server/errors";
 import { audit } from "@/server/audit";
-import { headers } from "next/headers";
 
 export const POST = route(async (request: Request) => {
   await assertCsrf();
@@ -16,28 +15,39 @@ export const POST = route(async (request: Request) => {
 
   const body = changePasswordSchema.parse(await readJson(request));
 
-  const record = await prisma.user.findUniqueOrThrow({
-    where: { id: user.id },
-    select: { passwordHash: true },
-  });
-
-  if (!(await verifyPassword(body.currentPassword, record.passwordHash))) {
-    throw badRequest("A senha atual está incorreta.");
-  }
   if (body.currentPassword === body.newPassword) {
     throw badRequest("A nova senha precisa ser diferente da atual.");
   }
 
-  await prisma.user.update({
+  const record = await prisma.user.findUniqueOrThrow({
     where: { id: user.id },
-    data: { passwordHash: await hashPassword(body.newPassword) },
+    select: { authUserId: true },
   });
 
-  // Derruba todas as sessões e cria uma nova para este aparelho.
-  await destroyAllSessions(user.id);
-  const h = await headers();
-  await createSession(user.id, { userAgent: h.get("user-agent"), ip });
+  const provider = getIdentityProvider();
+
+  const authId = record.authUserId ?? user.id;
+
+  // O provedor confere a senha atual — é ele quem a guarda.
+  await provider.changePassword({
+    authId,
+    email: user.email,
+    currentPassword: body.currentPassword,
+    newPassword: body.newPassword,
+  });
+
+  /*
+    Senha trocada derruba TODAS as sessões, em qualquer aparelho: se a senha
+    antiga tinha vazado, quem estava usando a conta perde o acesso na hora.
+    Em seguida este aparelho volta, já com a senha nova — assim quem trocou
+    não é deslogado do próprio navegador.
+  */
+  await provider.signOutEverywhere(authId);
+  await provider.signIn({ email: user.email, password: body.newPassword });
+
   await audit({ action: "auth.password_changed", userId: user.id, ip });
 
-  return ok({ message: "Senha alterada. As demais sessões foram encerradas." });
+  return ok({
+    message: "Senha alterada. As demais sessões foram encerradas.",
+  });
 });

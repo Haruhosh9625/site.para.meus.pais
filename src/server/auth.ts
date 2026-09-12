@@ -1,105 +1,107 @@
 import { cookies, headers } from "next/headers";
-import type { Role, User } from "@prisma/client";
+import type { Role } from "@prisma/client";
 import { prisma } from "./db";
 import { env } from "./env";
-import { generateToken, hashToken, safeEqual } from "./tokens";
+import { CSRF_COOKIE, CSRF_HEADER, verifyCsrfToken } from "./csrf";
+import { getIdentityProvider } from "./identity";
+import type { SessionUser } from "./identity/types";
 import { forbidden, unauthorized } from "./errors";
+import { logger } from "./logger";
 
-export const SESSION_COOKIE = "ds_session";
-export const CSRF_COOKIE = "ds_csrf";
-export const CSRF_HEADER = "x-csrf-token";
+/**
+ * Sessão, papéis e CSRF da aplicação.
+ *
+ * Este módulo NÃO sabe onde a senha mora: quem confere credencial é o
+ * provedor de identidade (src/server/identity). Aqui fica o que é da
+ * aplicação — achar a linha de `users`, exigir login, exigir papel ADMIN e
+ * barrar requisição de outra origem.
+ *
+ * O papel (CUSTOMER/ADMIN) é lido SEMPRE do banco, nunca de um dado que
+ * venha do navegador ou de dentro do JWT. Um token adulterado não vira
+ * administrador.
+ */
 
-export type SessionUser = Pick<User, "id" | "name" | "email" | "phone" | "role" | "createdAt">;
+export { CSRF_COOKIE, CSRF_HEADER } from "./csrf";
+export { SESSION_COOKIE } from "./identity";
+export type { SessionUser } from "./identity/types";
 
-const sessionSelect = {
+const userSelect = {
   id: true,
   name: true,
   email: true,
   phone: true,
   role: true,
   createdAt: true,
+  active: true,
 } as const;
 
-function cookieOptions(maxAgeSeconds: number) {
-  return {
-    httpOnly: true,
-    // `secure` só em produção: em HTTP local o navegador descartaria o cookie.
-    secure: env.isProduction,
-    sameSite: "lax" as const,
-    path: "/",
-    maxAge: maxAgeSeconds,
-  };
-}
-
 /**
- * Cria uma sessão: gera um token opaco, grava apenas o HASH no banco e
- * devolve o token em um cookie httpOnly. Mesmo com acesso de leitura ao
- * banco, ninguém consegue reconstruir um cookie de sessão válido.
+ * Usuário da requisição atual, ou null. Nunca lança.
+ *
+ * Dois passos: o provedor diz quem é (validando o token junto à fonte), e
+ * aqui buscamos a linha da aplicação por `authUserId`.
  */
-export async function createSession(
-  userId: string,
-  meta: { userAgent?: string | null; ip?: string | null } = {},
-) {
-  const token = generateToken(32);
-  const csrfSecret = generateToken(24);
-  const maxAge = env.sessionDays * 24 * 60 * 60;
-  const expiresAt = new Date(Date.now() + maxAge * 1000);
-
-  await prisma.session.create({
-    data: {
-      userId,
-      tokenHash: hashToken(token),
-      csrfSecret,
-      userAgent: meta.userAgent?.slice(0, 300) ?? null,
-      ip: meta.ip ?? null,
-      expiresAt,
-    },
-  });
-
-  const store = await cookies();
-  store.set(SESSION_COOKIE, token, cookieOptions(maxAge));
-  // O cookie de CSRF é legível por JavaScript de propósito: o front precisa
-  // lê-lo para reenviá-lo no cabeçalho (padrão double-submit).
-  store.set(CSRF_COOKIE, csrfSecret, { ...cookieOptions(maxAge), httpOnly: false });
-
-  return { token, csrfSecret, expiresAt };
-}
-
-export async function destroyCurrentSession() {
-  const store = await cookies();
-  const token = store.get(SESSION_COOKIE)?.value;
-  if (token) {
-    await prisma.session
-      .deleteMany({ where: { tokenHash: hashToken(token) } })
-      .catch(() => undefined);
-  }
-  store.delete(SESSION_COOKIE);
-  store.delete(CSRF_COOKIE);
-}
-
-/** Encerra todas as sessões do usuário (usado ao trocar/redefinir a senha). */
-export async function destroyAllSessions(userId: string) {
-  await prisma.session.deleteMany({ where: { userId } });
-}
-
-/** Usuário da requisição atual, ou null. Nunca lança. */
 export async function getCurrentUser(): Promise<SessionUser | null> {
-  const store = await cookies();
-  const token = store.get(SESSION_COOKIE)?.value;
-  if (!token) return null;
+  const provider = getIdentityProvider();
 
-  const session = await prisma.session.findUnique({
-    where: { tokenHash: hashToken(token) },
-    select: { id: true, expiresAt: true, user: { select: { ...sessionSelect, active: true } } },
+  const identity = await provider.current().catch(() => null);
+  if (!identity) return null;
+
+  let record = await prisma.user.findUnique({
+    where: { authUserId: identity.authId },
+    select: userSelect,
   });
 
-  if (!session || session.expiresAt < new Date() || !session.user.active) {
-    if (session) await prisma.session.delete({ where: { id: session.id } }).catch(() => undefined);
-    return null;
+  /*
+    Credencial sem linha na aplicação.
+
+    Acontece de dois jeitos legítimos: alguém criado direto no painel do
+    Supabase, ou um cadastro em que a criação da credencial deu certo e a
+    gravação da linha falhou. Em vez de deixar a pessoa presa em um limbo,
+    criamos a linha a partir do que o provedor sabe. O papel nasce CUSTOMER
+    — promover a ADMIN é sempre um ato deliberado (npm run admin:create).
+  */
+  if (!record) {
+    record = await adoptIdentity(identity.authId, identity.email);
+    if (!record) return null;
   }
 
-  const { active: _active, ...user } = session.user;
+  if (!record.active) return null;
+
+  const { active: _active, ...user } = record;
   return user;
+}
+
+/** Cria (ou vincula) a linha de `users` de uma credencial já existente. */
+async function adoptIdentity(authId: string, email: string) {
+  // O e-mail pode já ter uma linha — caso de base migrada do provedor local.
+  const byEmail = await prisma.user.findUnique({ where: { email }, select: { id: true } });
+
+  if (byEmail) {
+    logger.info("auth:identity_linked", { authId });
+    return prisma.user
+      .update({
+        where: { id: byEmail.id },
+        data: { authUserId: authId },
+        select: userSelect,
+      })
+      .catch(() => null);
+  }
+
+  logger.info("auth:identity_adopted", { authId });
+  return prisma.user
+    .create({
+      data: {
+        authUserId: authId,
+        email,
+        // Sem perfil ainda: a tela /minha-conta pede nome e telefone.
+        name: email.split("@")[0],
+        phone: "",
+        role: "CUSTOMER",
+      },
+      select: userSelect,
+    })
+    .catch(() => null);
 }
 
 /** Exige um usuário autenticado. Lança 401 quando não há sessão. */
@@ -118,6 +120,22 @@ export async function requireRole(role: Role): Promise<SessionUser> {
 
 export const requireAdmin = () => requireRole("ADMIN");
 
+/** Encerra a sessão deste aparelho. */
+export async function destroyCurrentSession() {
+  await getIdentityProvider().signOut();
+  const store = await cookies();
+  store.delete(CSRF_COOKIE);
+}
+
+/** Encerra as sessões do usuário em todos os aparelhos. */
+export async function destroyAllSessions(appUserId: string) {
+  const user = await prisma.user.findUnique({
+    where: { id: appUserId },
+    select: { authUserId: true },
+  });
+  await getIdentityProvider().signOutEverywhere(user?.authUserId ?? appUserId);
+}
+
 // ------------------------------- CSRF / origem ------------------------------
 
 /**
@@ -125,9 +143,10 @@ export const requireAdmin = () => requireRole("ADMIN");
  *
  *  1. Origin/Referer precisa bater com a origem da própria aplicação.
  *     Um site malicioso não consegue forjar esse cabeçalho.
- *  2. Double-submit: o cabeçalho x-csrf-token precisa ser igual ao segredo
- *     guardado na sessão. Como o cookie é SameSite=Lax e outra origem não
- *     consegue lê-lo, o atacante não tem como montar o cabeçalho.
+ *  2. Double-submit: o cabeçalho x-csrf-token tem de ser igual ao cookie
+ *     ds_csrf E carregar uma assinatura HMAC válida do servidor. Outra
+ *     origem não consegue ler o cookie (SameSite=Lax, domínio nosso) nem
+ *     forjar a assinatura (não tem o SESSION_SECRET).
  */
 export async function assertCsrf() {
   const h = await headers();
@@ -158,18 +177,23 @@ export async function assertCsrf() {
     }
   }
 
-  // Sem sessão não há o que proteger com token (ex.: login e cadastro).
-  const sessionToken = store.get(SESSION_COOKIE)?.value;
-  if (!sessionToken) return;
+  /*
+    Requisição sem sessão nenhuma (login, cadastro, recuperação de senha) não
+    tem o que proteger com token: quem responde por ela é a checagem de
+    origem acima, mais o limite de tentativas da própria rota.
 
-  const session = await prisma.session.findUnique({
-    where: { tokenHash: hashToken(sessionToken) },
-    select: { csrfSecret: true },
-  });
-  if (!session) return;
+    Havendo sessão, o token é OBRIGATÓRIO. A checagem não pode depender da
+    presença do cookie ds_csrf: quem conseguisse suprimi-lo passaria livre.
+  */
+  const temSessao = store
+    .getAll()
+    .some((cookie) => cookie.name === "ds_session" || /^sb-.*-auth-token/.test(cookie.name));
+  if (!temSessao) return;
 
+  const cookieToken = store.get(CSRF_COOKIE)?.value ?? "";
   const provided = h.get(CSRF_HEADER) ?? "";
-  if (!provided || !safeEqual(provided, session.csrfSecret)) {
+
+  if (!provided || provided !== cookieToken || !(await verifyCsrfToken(provided))) {
     throw forbidden("Token CSRF ausente ou inválido. Recarregue a página e tente novamente.");
   }
 }

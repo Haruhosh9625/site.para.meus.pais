@@ -5,7 +5,8 @@ import { useEffect, useState } from "react";
 import { api, errorMessage, ApiError } from "@/lib/api-client";
 import { useSession, useToast } from "@/components/providers";
 import { formatAddress, formatDate } from "@/lib/format";
-import { Button, Field, Input, EmptyState, ErrorState, Skeleton, cx } from "@/components/ui";
+import { Button, Field, Input, EmptyState, ErrorState, Skeleton } from "@/components/ui";
+import { cx } from "@/lib/cx";
 
 type Address = {
   id: string;
@@ -120,7 +121,7 @@ export default function MinhaContaPage() {
             className={cx(
               "tap rounded-lg px-4 text-sm font-semibold whitespace-nowrap transition-colors",
               tab === item.key
-                ? "bg-brand-600 text-white"
+                ? "bg-brand-500 text-coal-900"
                 : "bg-[var(--surface-sunken)] hover:bg-[var(--surface)]",
             )}
           >
@@ -411,7 +412,7 @@ function AddressManager({
           <label className="flex items-center gap-3 text-sm">
             <input type="checkbox" checked={form.isDefault}
               onChange={(e) => setForm({ ...form, isDefault: e.target.checked })}
-              className="size-5 accent-[var(--color-brand-600)]" />
+              className="size-5 accent-[var(--brand-ink)]" />
             Usar como endereço padrão
           </label>
 
@@ -550,7 +551,7 @@ function NotificationList() {
           </div>
           {notification.orderId && (
             <Link href={`/pedido/${notification.orderId}`}
-              className="mt-2 inline-block text-sm font-semibold text-brand-600 underline-offset-4 hover:underline">
+              className="mt-2 inline-block text-sm font-semibold text-brand underline-offset-4 hover:underline">
               Ver pedido
             </Link>
           )}

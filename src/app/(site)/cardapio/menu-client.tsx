@@ -5,7 +5,8 @@ import { useEffect, useMemo, useState } from "react";
 import { ProductCard, type MenuProduct } from "@/components/site/product-card";
 import { useCart, useStoreSettings } from "@/components/providers";
 import { formatCents } from "@/lib/money";
-import { Button, EmptyState, Spinner, cx } from "@/components/ui";
+import { Button, EmptyState, Spinner } from "@/components/ui";
+import { cx } from "@/lib/cx";
 
 type Category = { id: string; name: string; slug: string; products: MenuProduct[] };
 
@@ -100,7 +101,7 @@ export function MenuClient({ categories }: { categories: Category[] }) {
                   className={cx(
                     "tap inline-flex items-center rounded-full px-4 text-sm font-semibold whitespace-nowrap transition-colors",
                     activeCategory === category.slug
-                      ? "bg-brand-600 text-white"
+                      ? "bg-brand-500 text-coal-900"
                       : "bg-[var(--surface-sunken)] hover:bg-[var(--surface-muted)]",
                   )}
                 >

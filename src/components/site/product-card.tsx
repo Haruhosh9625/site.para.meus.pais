@@ -3,7 +3,8 @@
 import Image from "next/image";
 import { useCart, useToast } from "@/components/providers";
 import { formatCents } from "@/lib/money";
-import { Button, cx } from "@/components/ui";
+import { Button } from "@/components/ui";
+import { cx } from "@/lib/cx";
 
 export type MenuProduct = {
   id: string;
@@ -107,7 +108,7 @@ export function ProductCard({ product }: { product: MenuProduct }) {
         <p className="muted mt-1 line-clamp-2 text-sm sm:line-clamp-3">{product.description}</p>
 
         <div className="mt-auto flex items-center justify-between gap-3 pt-3">
-          <p className="text-lg font-bold text-brand-600">{formatCents(product.priceCents)}</p>
+          <p className="text-lg font-bold text-brand">{formatCents(product.priceCents)}</p>
 
           {unavailable ? (
             <span className="muted text-xs font-semibold">Esgotado</span>

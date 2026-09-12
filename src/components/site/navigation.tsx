@@ -5,7 +5,8 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { Logo } from "./logo";
 import { useCart, useSession, useStoreSettings } from "@/components/providers";
-import { Badge, Button, cx } from "@/components/ui";
+import { Badge, Button } from "@/components/ui";
+import { cx } from "@/lib/cx";
 import { formatPhone } from "@/lib/format";
 
 /* ------------------------------- ícones ---------------------------------- */
@@ -121,7 +122,7 @@ export function SiteHeader() {
             {user?.role === "ADMIN" && (
               <Link
                 href="/admin"
-                className="hidden rounded-lg px-3 py-2 text-sm font-semibold text-brand-700 hover:bg-[var(--surface-sunken)] sm:block dark:text-brand-300"
+                className="hidden rounded-lg px-3 py-2 text-sm font-semibold text-brand hover:bg-[var(--surface-sunken)] sm:block"
               >
                 Painel
               </Link>
@@ -134,7 +135,7 @@ export function SiteHeader() {
             >
               <Icon path={ICONS.cart} />
               {itemCount > 0 && (
-                <span className="absolute -top-0.5 right-1 flex size-5 items-center justify-center rounded-full bg-brand-600 text-[11px] font-bold text-white">
+                <span className="absolute -top-0.5 right-1 flex size-5 items-center justify-center rounded-full bg-brand-500 text-[11px] font-bold text-coal-900">
                   {itemCount > 99 ? "99+" : itemCount}
                 </span>
               )}
@@ -199,7 +200,7 @@ export function SiteHeader() {
                 <Link
                   href="/admin"
                   onClick={() => setMenuOpen(false)}
-                  className="tap flex items-center rounded-lg px-3 text-sm font-semibold text-brand-700 hover:bg-[var(--surface-sunken)] dark:text-brand-300"
+                  className="tap flex items-center rounded-lg px-3 text-sm font-semibold text-brand hover:bg-[var(--surface-sunken)]"
                 >
                   Painel administrativo
                 </Link>
@@ -276,13 +277,13 @@ export function BottomNav() {
                 aria-current={active ? "page" : undefined}
                 className={cx(
                   "relative flex flex-col items-center gap-1 py-2.5 text-[11px] font-medium transition-colors",
-                  active ? "text-brand-600" : "text-[var(--text-muted)]",
+                  active ? "text-brand" : "text-[var(--text-muted)]",
                 )}
               >
                 <span className="relative">
                   <Icon path={item.icon} className="size-6" />
                   {"badge" in item && (item.badge ?? 0) > 0 && (
-                    <span className="absolute -top-1.5 -right-2 flex min-w-4.5 items-center justify-center rounded-full bg-brand-600 px-1 text-[10px] font-bold text-white">
+                    <span className="absolute -top-1.5 -right-2 flex min-w-4.5 items-center justify-center rounded-full bg-brand-500 px-1 text-[10px] font-bold text-coal-900">
                       {(item.badge ?? 0) > 99 ? "99+" : item.badge}
                     </span>
                   )}
@@ -314,8 +315,10 @@ export function SiteFooter() {
         <div>
           <Logo />
           <p className="muted mt-3 max-w-xs text-sm">
-            Espetos na brasa, refrigerante gelado e o nosso Completo. Peça pelo site e retire ou
-            receba em casa.
+            Espetos na brasa, refrigerante gelado e o nosso Completo. Peça pelo site
+            {settings?.allowDelivery
+              ? " e retire ou receba em casa."
+              : ", escolha a hora e retire no balcão."}
           </p>
         </div>
 

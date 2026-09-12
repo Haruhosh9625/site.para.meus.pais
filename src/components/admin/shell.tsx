@@ -5,7 +5,8 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { useSession } from "@/components/providers";
 import { LogoMark } from "@/components/site/logo";
-import { Button, cx } from "@/components/ui";
+import { Button } from "@/components/ui";
+import { cx } from "@/lib/cx";
 
 const NAV = [
   { href: "/admin", label: "Dashboard", icon: "M4 13h6V4H4v9Zm0 7h6v-5H4v5Zm10 0h6V11h-6v9Zm0-16v5h6V4h-6Z" },
@@ -59,7 +60,7 @@ export function AdminShell({ userName, children }: { userName: string; children:
           className={cx(
             "tap flex items-center gap-3 rounded-xl px-3 text-sm font-medium transition-colors",
             isActive(item.href)
-              ? "bg-brand-600 text-white"
+              ? "bg-brand-500 text-coal-900"
               : "hover:bg-[var(--surface-sunken)]",
           )}
         >
@@ -118,7 +119,7 @@ export function AdminShell({ userName, children }: { userName: string; children:
           <LogoMark className="size-7" />
           <span className="text-sm font-extrabold">Painel</span>
         </Link>
-        <Link href="/" className="ml-auto text-sm font-semibold text-brand-600">
+        <Link href="/" className="ml-auto text-sm font-semibold text-brand">
           Ver site
         </Link>
       </header>

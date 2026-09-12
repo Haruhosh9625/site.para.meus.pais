@@ -5,7 +5,8 @@ import { api, errorMessage } from "@/lib/api-client";
 import { useStoreSettings, useToast } from "@/components/providers";
 import { formatCents, parseMoneyToCents } from "@/lib/money";
 import { WEEKDAY_LABEL } from "@/lib/constants";
-import { Badge, Button, ErrorState, Field, Input, Skeleton, cx } from "@/components/ui";
+import { Badge, Button, ErrorState, Field, Input, Skeleton } from "@/components/ui";
+import { cx } from "@/lib/cx";
 
 type OpeningHour = { weekday: number; open: string; close: string; closed: boolean };
 
@@ -212,7 +213,7 @@ export default function AdminSettingsPage() {
               type="checkbox"
               checked={settings.useManualSwitch}
               onChange={(e) => patch({ useManualSwitch: e.target.checked })}
-              className="mt-0.5 size-5 accent-[var(--color-brand-600)]"
+              className="mt-0.5 size-5 accent-[var(--brand-ink)]"
             />
             <span>
               <span className="block text-sm font-semibold">Controlar manualmente</span>
@@ -236,7 +237,7 @@ export default function AdminSettingsPage() {
                 type="checkbox"
                 checked={settings.manualOpen}
                 onChange={(e) => patch({ manualOpen: e.target.checked })}
-                className="size-5 accent-[var(--color-brand-600)]"
+                className="size-5 accent-[var(--brand-ink)]"
               />
               <span className="text-sm font-bold">
                 {settings.manualOpen ? "LOJA ABERTA — aceitando pedidos" : "LOJA FECHADA"}
@@ -357,7 +358,7 @@ export default function AdminSettingsPage() {
                           ),
                         })
                       }
-                      className="size-4 accent-[var(--color-brand-600)]"
+                      className="size-4 accent-[var(--brand-ink)]"
                     />
                     Aberto
                   </label>
@@ -513,7 +514,7 @@ export default function AdminSettingsPage() {
             <label className="flex items-center gap-2 text-sm font-medium">
               <input type="checkbox" checked={settings.allowDelivery}
                 onChange={(e) => patch({ allowDelivery: e.target.checked })}
-                className="size-5 accent-[var(--color-brand-600)]" />
+                className="size-5 accent-[var(--brand-ink)]" />
               Aceitar entrega
             </label>
             <p className="muted w-full text-xs">
@@ -524,7 +525,7 @@ export default function AdminSettingsPage() {
             <label className="flex items-center gap-2 text-sm font-medium">
               <input type="checkbox" checked={settings.allowPickup}
                 onChange={(e) => patch({ allowPickup: e.target.checked })}
-                className="size-5 accent-[var(--color-brand-600)]" />
+                className="size-5 accent-[var(--brand-ink)]" />
               Aceitar retirada no local
             </label>
           </div>
@@ -537,19 +538,19 @@ export default function AdminSettingsPage() {
             <label className="flex items-center gap-2 text-sm font-medium">
               <input type="checkbox" checked={settings.acceptPix}
                 onChange={(e) => patch({ acceptPix: e.target.checked })}
-                className="size-5 accent-[var(--color-brand-600)]" />
+                className="size-5 accent-[var(--brand-ink)]" />
               PIX
             </label>
             <label className="flex items-center gap-2 text-sm font-medium">
               <input type="checkbox" checked={settings.acceptCard}
                 onChange={(e) => patch({ acceptCard: e.target.checked })}
-                className="size-5 accent-[var(--color-brand-600)]" />
+                className="size-5 accent-[var(--brand-ink)]" />
               Cartão
             </label>
             <label className="flex items-center gap-2 text-sm font-medium">
               <input type="checkbox" checked={settings.acceptCash}
                 onChange={(e) => patch({ acceptCash: e.target.checked })}
-                className="size-5 accent-[var(--color-brand-600)]" />
+                className="size-5 accent-[var(--brand-ink)]" />
               Dinheiro
             </label>
           </div>

@@ -14,7 +14,7 @@ export default function NotFound() {
           Início
         </Link>
         <Link href="/cardapio"
-          className="tap inline-flex items-center rounded-xl bg-brand-600 px-5 font-semibold text-white">
+          className="tap inline-flex items-center rounded-xl bg-brand-500 px-5 font-semibold text-coal-900">
           Ver cardápio
         </Link>
       </div>

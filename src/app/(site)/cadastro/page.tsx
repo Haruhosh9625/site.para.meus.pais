@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { api, errorMessage, ApiError } from "@/lib/api-client";
 import { useSession, useToast } from "@/components/providers";
-import { Button, Field, Input, ErrorState, cx } from "@/components/ui";
+import { Button, Field, Input, ErrorState } from "@/components/ui";
+import { cx } from "@/lib/cx";
 import { LogoMark } from "@/components/site/logo";
 
 /** Indicador simples da força da senha, só para orientar quem cadastra. */
@@ -214,7 +215,7 @@ export default function CadastroPage() {
               type="checkbox"
               checked={withAddress}
               onChange={(event) => setWithAddress(event.target.checked)}
-              className="size-5 accent-[var(--color-brand-600)]"
+              className="size-5 accent-[var(--brand-ink)]"
             />
             <span className="text-sm font-medium">Quero cadastrar meu endereço de entrega agora</span>
           </label>
@@ -326,7 +327,7 @@ export default function CadastroPage() {
 
         <p className="muted pt-1 text-center text-sm">
           Já tem conta?{" "}
-          <Link href="/login" className="font-semibold text-brand-600 underline-offset-4 hover:underline">
+          <Link href="/login" className="font-semibold text-brand underline-offset-4 hover:underline">
             Entrar
           </Link>
         </p>

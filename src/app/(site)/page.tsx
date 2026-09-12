@@ -76,14 +76,16 @@ export default async function HomePage() {
 
               <p className="mt-5 max-w-lg text-lg text-coal-200">
                 Porco, carne, toscana, frango e frango com bacon — todos a{" "}
-                <strong className="text-white">R$ 8,00</strong>. Monte seu pedido em segundos e
-                escolha entrega ou retirada.
+                <strong className="text-white">R$ 8,00</strong>. Monte seu pedido em segundos
+                {settings?.allowDelivery
+                  ? " e escolha entrega ou retirada."
+                  : ", escolha a hora e retire no balcão."}
               </p>
 
               <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                 <Link
                   href="/cardapio"
-                  className="tap inline-flex items-center justify-center rounded-xl bg-brand-600 px-7 py-4 text-base font-bold text-white transition-colors hover:bg-brand-500"
+                  className="tap inline-flex items-center justify-center rounded-xl bg-brand-500 px-7 py-4 text-base font-bold text-coal-900 transition-colors hover:bg-brand-400"
                 >
                   Ver o cardápio
                 </Link>
@@ -108,7 +110,9 @@ export default async function HomePage() {
                 </div>
                 <div>
                   <dt className="text-coal-300">Receba</dt>
-                  <dd className="font-semibold">Entrega ou retirada</dd>
+                  <dd className="font-semibold">
+                    {settings?.allowDelivery ? "Entrega ou retirada" : "Retirada agendada"}
+                  </dd>
                 </div>
               </dl>
             </div>
@@ -131,12 +135,24 @@ export default async function HomePage() {
         <ol className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {[
             { step: "1", title: "Monte o pedido", text: "Escolha os espetos, o Completo e a bebida." },
-            { step: "2", title: "Entrega ou retirada", text: "Informe o endereço ou venha buscar." },
+            settings?.allowDelivery
+              ? { step: "2", title: "Entrega ou retirada", text: "Informe o endereço ou venha buscar." }
+              : {
+                  step: "2",
+                  title: "Escolha o horário",
+                  text: "Diga a hora em que vai buscar. Deixamos pronto para esse momento.",
+                },
             { step: "3", title: "Pague com PIX", text: "O código aparece na hora, direto na tela." },
-            { step: "4", title: "Acompanhe", text: "Veja o status do preparo até a entrega." },
+            {
+              step: "4",
+              title: "Acompanhe",
+              text: settings?.allowDelivery
+                ? "Veja o status do preparo até a entrega."
+                : "Veja o status até o pedido ficar pronto para retirada.",
+            },
           ].map((item) => (
             <li key={item.step} className="surface p-5">
-              <span className="inline-flex size-8 items-center justify-center rounded-full bg-brand-600 text-sm font-bold text-white">
+              <span className="inline-flex size-8 items-center justify-center rounded-full bg-brand-500 text-sm font-bold text-coal-900">
                 {item.step}
               </span>
               <h2 className="mt-3 font-semibold">{item.title}</h2>
@@ -155,7 +171,7 @@ export default async function HomePage() {
           </div>
           <Link
             href="/cardapio"
-            className="shrink-0 text-sm font-semibold text-brand-600 underline-offset-4 hover:underline"
+            className="shrink-0 text-sm font-semibold text-brand underline-offset-4 hover:underline"
           >
             Ver tudo
           </Link>
@@ -187,7 +203,7 @@ export default async function HomePage() {
                   </p>
                   <h3 className="mt-1 font-semibold">{product.name}</h3>
                   <p className="muted mt-1 line-clamp-2 text-sm">{product.description}</p>
-                  <p className="mt-3 text-lg font-bold text-brand-600">
+                  <p className="mt-3 text-lg font-bold text-brand">
                     {formatCents(product.priceCents)}
                   </p>
                 </div>
@@ -212,7 +228,7 @@ export default async function HomePage() {
           </div>
           <Link
             href="/cardapio"
-            className="tap inline-flex shrink-0 items-center justify-center rounded-xl bg-brand-600 px-5 py-3 text-sm font-semibold text-white hover:bg-brand-700"
+            className="tap inline-flex shrink-0 items-center justify-center rounded-xl bg-brand-500 px-5 py-3 text-sm font-semibold text-coal-900 hover:bg-brand-400"
           >
             Adicionar ao pedido
           </Link>

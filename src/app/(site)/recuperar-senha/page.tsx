@@ -70,7 +70,7 @@ export default function RecuperarSenhaPage() {
             Enviar instruções
           </Button>
           <p className="muted text-center text-sm">
-            <Link href="/login" className="text-brand-600 underline-offset-4 hover:underline">
+            <Link href="/login" className="text-brand underline-offset-4 hover:underline">
               Voltar para o login
             </Link>
           </p>

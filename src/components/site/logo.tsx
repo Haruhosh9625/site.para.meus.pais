@@ -9,8 +9,8 @@ export function LogoMark({ className = "size-9" }: { className?: string }) {
     <svg viewBox="0 0 48 48" className={className} role="img" aria-label="DS Espetos">
       <defs>
         <linearGradient id="ds-fire" x1="0" y1="1" x2="0" y2="0">
-          <stop offset="0" stopColor="#cc3f16" />
-          <stop offset="1" stopColor="#f7b955" />
+          <stop offset="0" stopColor="#d99400" />
+          <stop offset="1" stopColor="#fef3c7" />
         </linearGradient>
       </defs>
       {/*
@@ -41,7 +41,7 @@ export function Logo({ href = "/", compact = false }: { href?: string; compact?:
             "block font-extrabold tracking-tight " + (compact ? "text-base" : "text-lg sm:text-xl")
           }
         >
-          DS <span className="text-brand-600">Espetos</span>
+          DS <span className="text-brand">Espetos</span>
         </span>
         {!compact && (
           <span className="muted text-[11px] font-medium tracking-widest uppercase">

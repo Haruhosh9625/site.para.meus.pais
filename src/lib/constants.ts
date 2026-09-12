@@ -121,7 +121,9 @@ export function statusTone(status: OrderStatus): StatusTone {
  * diferentes), então o gráfico continua legível impresso em preto e branco.
  */
 export const CHART_COLORS = {
-  pix: "#e05320",
+  // O amarelo da marca, no tom 600: claro demais e a fatia desaparece
+  // dentro do cartão branco.
+  pix: "#d99400",
   card: "#3f7d9e",
   cash: "#4f9d69",
 } as const;

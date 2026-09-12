@@ -1485,6 +1485,26 @@ async function main() {
       "Selos de status renderizam com o tom correto",
       dashboardHtml.includes("Aguardando pagamento") || dashboardHtml.includes("Nenhum pedido ainda"),
     );
+
+    // A agenda é um Server Component e já quebrou inteira por importar `cx`
+    // de um módulo "use client". Esta asserção pega a regressão.
+    const agendaHtml = await fetch(`${BASE_URL}/admin/agenda`, {
+      headers: {
+        cookie: `ds_session=${(admin as unknown as { cookies: Map<string, string> }).cookies.get("ds_session")}`,
+      },
+    }).then((response) => response.text());
+
+    check("Agenda do painel entrega HTML", agendaHtml.includes("Agenda"));
+    check(
+      "Agenda não caiu na tela de erro",
+      !agendaHtml.includes("Algo deu errado"),
+      "página de erro renderizada",
+    );
+    check(
+      "Agenda mostra a regra de capacidade em vigor",
+      /janelas? de \d+ min/.test(agendaHtml),
+      "texto da janela ausente",
+    );
   }
 
   const adminPage = await fetch(`${BASE_URL}/admin`, { redirect: "manual" });

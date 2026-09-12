@@ -4,7 +4,8 @@ import { getSettings, parseOpeningHours } from "@/server/services/settings";
 import { formatCents } from "@/lib/money";
 import { formatPhone, formatTime } from "@/lib/format";
 import { ORDER_STATUS_LABEL, statusTone, WEEKDAY_LABEL } from "@/lib/constants";
-import { Badge, EmptyState, cx } from "@/components/ui";
+import { Badge, EmptyState } from "@/components/ui";
+import { cx } from "@/lib/cx";
 import { AutoRefresh } from "./refresh";
 
 /**
@@ -139,8 +140,8 @@ export default async function AdminAgendaPage({
                     {window.full && <Badge tone="warning">Lotado</Badge>}
                     {schedule.capacity > 0 && !window.full && (
                       <Badge tone="success">
-                        {schedule.capacity - window.orders} vaga
-                        {schedule.capacity - window.orders === 1 ? "" : "s"}
+                        {schedule.capacity - window.occupied} vaga
+                        {schedule.capacity - window.occupied === 1 ? "" : "s"}
                       </Badge>
                     )}
                   </p>
@@ -162,9 +163,13 @@ export default async function AdminAgendaPage({
                             <Badge tone={statusTone(order.status)}>
                               {ORDER_STATUS_LABEL[order.status]}
                             </Badge>
-                            {order.paymentStatus !== "PAID" && (
-                              <Badge tone="warning">Não pago</Badge>
-                            )}
+                            {/* Em "Aguardando pagamento" os dois selos dizem
+                                a mesma coisa; o segundo só aparece quando
+                                acrescenta informação. */}
+                            {order.paymentStatus !== "PAID" &&
+                              order.status !== "AWAITING_PAYMENT" && (
+                                <Badge tone="warning">Não pago</Badge>
+                              )}
                           </p>
                           <p className="muted mt-0.5 text-sm">
                             {order.customerName} · {formatPhone(order.customerPhone)}

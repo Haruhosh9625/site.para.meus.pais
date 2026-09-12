@@ -413,7 +413,10 @@ export async function getDaySchedule(day: Date) {
   const windowMinutes = Math.max(1, settings.slotWindowMinutes);
 
   // Agrupa por janela, para a cozinha ver a carga de cada faixa.
-  const windows = new Map<string, { start: Date; orders: typeof orders; items: number }>();
+  const windows = new Map<
+    string,
+    { start: Date; orders: typeof orders; items: number; ocupando: number }
+  >();
   for (const order of orders) {
     if (!order.scheduledFor) continue;
     const dayStart = new Date(order.scheduledFor);
@@ -423,9 +426,16 @@ export async function getDaySchedule(day: Date) {
     );
     const windowStart = new Date(dayStart.getTime() + index * windowMinutes * 60000);
     const key = windowStart.toISOString();
-    const bucket = windows.get(key) ?? { start: windowStart, orders: [], items: 0 };
+    const bucket = windows.get(key) ?? { start: windowStart, orders: [], items: 0, ocupando: 0 };
     bucket.orders.push(order);
     bucket.items += order.items.reduce((sum, item) => sum + item.quantity, 0);
+    // A vaga é contada pela MESMA regra que aceita ou recusa um horário
+    // (OCCUPYING_STATUSES). Um pedido já retirado não ocupa mais nada —
+    // contá-lo aqui faria a tela dizer "lotado" enquanto o cliente ainda
+    // conseguia agendar, uma contradição entre duas partes do sistema.
+    if ((OCCUPYING_STATUSES as readonly string[]).includes(order.status)) {
+      bucket.ocupando += 1;
+    }
     windows.set(key, bucket);
   }
 
@@ -439,7 +449,9 @@ export async function getDaySchedule(day: Date) {
         start: bucket.start,
         orders: bucket.orders.length,
         items: bucket.items,
-        full: settings.slotCapacity > 0 && bucket.orders.length >= settings.slotCapacity,
+        /** Pedidos que ainda ocupam vaga (exclui retirados e entregues). */
+        occupied: bucket.ocupando,
+        full: settings.slotCapacity > 0 && bucket.ocupando >= settings.slotCapacity,
       })),
   };
 }

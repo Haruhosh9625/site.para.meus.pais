@@ -88,7 +88,7 @@ function LoginForm() {
               <button
                 type="button"
                 onClick={() => setShowPassword((value) => !value)}
-                className="absolute inset-y-0 right-2 px-2 text-xs font-semibold text-brand-600"
+                className="absolute inset-y-0 right-2 px-2 text-xs font-semibold text-brand"
               >
                 {showPassword ? "Ocultar" : "Mostrar"}
               </button>
@@ -101,12 +101,12 @@ function LoginForm() {
         </Button>
 
         <div className="flex flex-col gap-2 pt-2 text-center text-sm">
-          <Link href="/recuperar-senha" className="text-brand-600 underline-offset-4 hover:underline">
+          <Link href="/recuperar-senha" className="text-brand underline-offset-4 hover:underline">
             Esqueci minha senha
           </Link>
           <p className="muted">
             Ainda não tem conta?{" "}
-            <Link href="/cadastro" className="font-semibold text-brand-600 underline-offset-4 hover:underline">
+            <Link href="/cadastro" className="font-semibold text-brand underline-offset-4 hover:underline">
               Criar conta
             </Link>
           </p>

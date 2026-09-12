@@ -1,7 +1,7 @@
 "use client";
 
 import { formatCents } from "@/lib/money";
-import { cx } from "@/components/ui";
+import { cx } from "@/lib/cx";
 
 /**
  * Como formatar os valores de um gráfico.

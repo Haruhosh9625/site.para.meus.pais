@@ -26,7 +26,7 @@ export default function GlobalError({
       </p>
       {error.digest && <p className="muted font-mono text-xs">Código: {error.digest}</p>}
       <button onClick={reset}
-        className="tap mt-2 inline-flex items-center rounded-xl bg-brand-600 px-6 font-semibold text-white">
+        className="tap mt-2 inline-flex items-center rounded-xl bg-brand-500 px-6 font-semibold text-coal-900">
         Tentar novamente
       </button>
     </div>

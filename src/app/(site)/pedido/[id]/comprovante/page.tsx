@@ -56,7 +56,7 @@ export default async function ComprovantePage({ params }: { params: Promise<{ id
       <div className="no-print mb-4 flex flex-wrap items-center justify-between gap-3">
         <Link
           href={`/pedido/${order.id}`}
-          className="text-sm font-semibold text-brand-600 underline-offset-4 hover:underline"
+          className="text-sm font-semibold text-brand underline-offset-4 hover:underline"
         >
           ← Voltar ao pedido
         </Link>

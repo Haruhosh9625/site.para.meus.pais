@@ -7,7 +7,8 @@ import { api, errorMessage, ApiError } from "@/lib/api-client";
 import { useCart, useSession, useStoreSettings, useToast } from "@/components/providers";
 import { formatCents, parseMoneyToCents } from "@/lib/money";
 import { formatAddress, formatPhone } from "@/lib/format";
-import { Button, Field, Input, Textarea, ErrorState, Spinner, cx } from "@/components/ui";
+import { Button, Field, Input, Textarea, ErrorState, Spinner } from "@/components/ui";
+import { cx } from "@/lib/cx";
 import { SchedulePicker } from "@/components/site/schedule-picker";
 
 type Address = {
@@ -230,7 +231,7 @@ export default function CheckoutPage() {
         </dl>
         <Link
           href="/minha-conta"
-          className="mt-3 inline-block text-sm font-semibold text-brand-600 underline-offset-4 hover:underline"
+          className="mt-3 inline-block text-sm font-semibold text-brand underline-offset-4 hover:underline"
         >
           Editar meus dados
         </Link>
@@ -313,7 +314,7 @@ export default function CheckoutPage() {
                         setAddressId(address.id);
                         setNeighborhood(address.neighborhood);
                       }}
-                      className="mt-1 size-4 accent-[var(--color-brand-600)]"
+                      className="mt-1 size-4 accent-[var(--brand-ink)]"
                     />
                     <span>
                       <strong className="block">{address.label}</strong>
@@ -333,7 +334,7 @@ export default function CheckoutPage() {
                     name="address"
                     checked={useNewAddress}
                     onChange={() => setUseNewAddress(true)}
-                    className="size-4 accent-[var(--color-brand-600)]"
+                    className="size-4 accent-[var(--brand-ink)]"
                   />
                   <span className="font-medium">Entregar em outro endereço</span>
                 </label>
@@ -436,7 +437,13 @@ export default function CheckoutPage() {
           {(
             [
               { value: "PIX", label: "PIX", hint: "QR Code na hora", icon: "📱", enabled: methodEnabled.pix },
-              { value: "CARD", label: "Cartão", hint: "Na entrega/retirada", icon: "💳", enabled: methodEnabled.card },
+              {
+                value: "CARD",
+                label: "Cartão",
+                hint: deliveryType === "PICKUP" ? "Na retirada" : "Na entrega",
+                icon: "💳",
+                enabled: methodEnabled.card,
+              },
               { value: "CASH", label: "Dinheiro", hint: "Informe o troco", icon: "💵", enabled: methodEnabled.cash },
             ] as const
           ).map((option) => (
@@ -609,7 +616,7 @@ function Step({ n }: { n: number }) {
   return (
     <span
       aria-hidden="true"
-      className="inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-brand-600 text-xs font-bold text-white"
+      className="inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-brand-500 text-xs font-bold text-coal-900"
     >
       {n}
     </span>

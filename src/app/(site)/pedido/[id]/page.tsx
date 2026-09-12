@@ -353,7 +353,8 @@ export default function PedidoPage({ params }: { params: Promise<{ id: string }>
                 </>
               ) : (
                 <p className="muted text-sm">
-                  O pagamento com cartão será feito na entrega/retirada, na maquininha.
+                  O pagamento com cartão será feito na{" "}
+                  {order.deliveryType === "PICKUP" ? "retirada" : "entrega"}, na maquininha.
                 </p>
               )}
             </>
@@ -385,8 +386,10 @@ export default function PedidoPage({ params }: { params: Promise<{ id: string }>
           className="mb-4 rounded-xl border border-emerald-300 bg-emerald-50 p-4 text-sm text-emerald-900 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-200"
         >
           <strong>Pagamento confirmado</strong>
-          {order.paidAt ? ` em ${formatDateTime(order.paidAt)}` : ""}. Seu pedido já está com a
-          cozinha.
+          {order.paidAt ? ` em ${formatDateTime(order.paidAt)}` : ""}.{" "}
+          {order.scheduledFor
+            ? `Seu horário das ${formatTime(order.scheduledFor)} está garantido.`
+            : "Seu pedido já está com a cozinha."}
         </div>
       )}
 
@@ -457,7 +460,9 @@ export default function PedidoPage({ params }: { params: Promise<{ id: string }>
 
       {/* ------------------------------- entrega ---------------------------- */}
       <section className="surface mb-4 p-5 text-sm">
-        <h2 className="mb-3 font-bold">Entrega e contato</h2>
+        <h2 className="mb-3 font-bold">
+          {order.deliveryType === "PICKUP" ? "Retirada" : "Entrega"} e contato
+        </h2>
         <dl className="space-y-2">
           <div className="flex gap-2">
             <dt className="muted w-28 shrink-0">Recebimento</dt>

@@ -2,24 +2,45 @@
 
 /* ---------------------------------------------------------------------------
    DS Espetos — sistema visual
-   Paleta de brasa: carvão escuro, laranja de fogo e creme quente.
-   Os tokens abaixo viram utilitários do Tailwind (bg-brand, text-ember...).
+   Paleta de brasa: carvão escuro, amarelo de chama e creme quente.
+   Os tokens abaixo viram utilitários do Tailwind (bg-brand-500, border-brand-300...).
+
+   SOBRE O AMARELO — leia antes de usar a cor:
+
+   Amarelo é claro. Um #f5b301 tem luminância parecida com a de um papel
+   creme, e isso muda duas regras que valiam para o laranja:
+
+     1. Texto BRANCO sobre amarelo é ilegível (1,85:1, longe dos 4,5:1
+        exigidos). Todo fundo amarelo leva texto ESCURO — `text-coal-900`.
+     2. Texto AMARELO sobre fundo claro também desaparece. Para escrever
+        na cor da marca use a classe `.text-brand`, que já resolve o
+        contraste nos dois temas: ouro escuro no claro, amarelo aberto no
+        escuro.
+
+   Os tons de 500 a 600 são para PREENCHER (botões, selos, barras). Os de
+   700 a 900 são para ESCREVER. Os de 50 a 200, para fundos suaves.
    --------------------------------------------------------------------------- */
 @theme {
-  --color-brand-50: #fef4ee;
-  --color-brand-100: #fde5d6;
-  --color-brand-200: #fac7ad;
-  --color-brand-300: #f6a179;
-  --color-brand-400: #f07443;
-  --color-brand-500: #e05320;
-  --color-brand-600: #cc3f16;
-  --color-brand-700: #a92f14;
-  --color-brand-800: #872818;
-  --color-brand-900: #6e2417;
+  --color-brand-50: #fffbeb;
+  --color-brand-100: #fef3c7;
+  --color-brand-200: #fde68a;
+  --color-brand-300: #fcd34d;
+  --color-brand-400: #fbbf24;
+  /* A cor da marca: o amarelo dos botões. Sempre com texto escuro. */
+  --color-brand-500: #f5b301;
+  --color-brand-600: #d99400;
+  /* Daqui para baixo é ouro escuro: serve para texto em fundo claro. */
+  --color-brand-700: #9c6500;
+  --color-brand-800: #7d5000;
+  --color-brand-900: #5c3b00;
+  /* O 950 existe porque várias telas usam `dark:bg-brand-950/40` como fundo
+     de seleção. Sem o token, a classe não gerava cor nenhuma. */
+  --color-brand-950: #3d2700;
 
-  --color-ember-400: #f7b955;
-  --color-ember-500: #e9a13c;
-  --color-ember-600: #c9801f;
+  /* Brasa: o vermelho que sobrou do fogo, usado como acento quente. */
+  --color-ember-400: #f97316;
+  --color-ember-500: #e2560c;
+  --color-ember-600: #b7420a;
 
   --color-coal-50: #f7f5f3;
   --color-coal-100: #e9e5e0;
@@ -50,6 +71,9 @@
   --border: #e7e0d8;
   --text: #1b1714;
   --text-muted: #6d6154;
+  /* Cor da marca em texto e do anel de foco. Amarelo puro não enxerga em
+     fundo branco, então aqui é o ouro escuro. */
+  --brand-ink: var(--color-brand-700);
   color-scheme: light;
 }
 
@@ -61,6 +85,8 @@
     --border: #352e28;
     --text: #f7f5f3;
     --text-muted: #b0a599;
+    /* No escuro é o contrário: o amarelo aberto é que aparece. */
+    --brand-ink: var(--color-brand-300);
     color-scheme: dark;
   }
 }
@@ -86,7 +112,7 @@
 
   /* Foco sempre visível: navegação por teclado precisa enxergar onde está. */
   :focus-visible {
-    outline: 2px solid var(--color-brand-500);
+    outline: 2px solid var(--brand-ink);
     outline-offset: 2px;
     border-radius: 4px;
   }
@@ -113,6 +139,15 @@
 
   .muted {
     color: var(--text-muted);
+  }
+
+  /*
+    Texto na cor da marca, com contraste garantido nos dois temas.
+    Use sempre esta classe em vez de `text-brand-500`/`text-brand-600`:
+    amarelo sobre fundo claro não se lê.
+  */
+  .text-brand {
+    color: var(--brand-ink);
   }
 
   /* Área mínima de toque de 44px — dedo em tela de celular. */

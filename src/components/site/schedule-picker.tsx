@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api-client";
-import { Field, Input, Spinner, cx } from "@/components/ui";
+import { Field, Input, Spinner } from "@/components/ui";
+import { cx } from "@/lib/cx";
 
 /**
  * Escolha do horário de retirada.

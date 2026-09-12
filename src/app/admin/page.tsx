@@ -49,7 +49,7 @@ export default async function AdminDashboardPage() {
           )}
           <Link
             href="/admin/configuracoes"
-            className="text-sm font-semibold text-brand-600 underline-offset-4 hover:underline"
+            className="text-sm font-semibold text-brand underline-offset-4 hover:underline"
           >
             Alterar
           </Link>
@@ -106,9 +106,13 @@ export default async function AdminDashboardPage() {
           </Link>
           <Link href="/admin/pedidos?status=READY&period=all">
             <StatCard
-              label="Prontos / a caminho"
+              label={settings.allowDelivery ? "Prontos / a caminho" : "Prontos"}
               value={String(metrics.queue.ready)}
-              hint="Aguardando entrega ou retirada"
+              hint={
+                settings.allowDelivery
+                  ? "Aguardando entrega ou retirada"
+                  : "Aguardando o cliente buscar"
+              }
               tone="success"
             />
           </Link>
@@ -169,7 +173,7 @@ export default async function AdminDashboardPage() {
             <h2 className="font-bold">Últimos pedidos</h2>
             <Link
               href="/admin/pedidos"
-              className="text-sm font-semibold text-brand-600 underline-offset-4 hover:underline"
+              className="text-sm font-semibold text-brand underline-offset-4 hover:underline"
             >
               Ver todos
             </Link>

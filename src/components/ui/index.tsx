@@ -1,6 +1,7 @@
 "use client";
 
 import { forwardRef, useId, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes } from "react";
+import { cx } from "@/lib/cx";
 
 /**
  * Componentes básicos de interface.
@@ -12,10 +13,6 @@ import { forwardRef, useId, type ButtonHTMLAttributes, type InputHTMLAttributes,
  *  - estados de carregamento usam aria-busy, não só um spinner visual.
  */
 
-function cx(...values: Array<string | false | null | undefined>): string {
-  return values.filter(Boolean).join(" ");
-}
-
 // --------------------------------- Button ----------------------------------
 
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
@@ -26,8 +23,14 @@ type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
 };
 
 const BUTTON_VARIANTS: Record<NonNullable<ButtonProps["variant"]>, string> = {
+  /*
+    O botão da marca é amarelo, e amarelo é claro: texto branco em cima dele
+    fica em 1,85:1 — ilegível. Por isso o texto é escuro em TODOS os estados,
+    e o pressionado escurece só até o 600, que ainda aceita texto escuro.
+  */
   primary:
-    "bg-brand-600 text-white hover:bg-brand-700 active:bg-brand-800 disabled:bg-brand-300 shadow-sm",
+    "bg-brand-500 text-coal-900 hover:bg-brand-400 active:bg-brand-600 " +
+    "disabled:bg-brand-200 disabled:text-coal-500 shadow-sm",
   secondary:
     "bg-coal-900 text-white hover:bg-coal-800 active:bg-coal-950 disabled:opacity-50 dark:bg-coal-100 dark:text-coal-900",
   outline:
@@ -99,7 +102,7 @@ export function Field({ label, error, hint, required, children }: FieldProps) {
       <label htmlFor={id} className="block text-sm font-medium">
         {label}
         {required && (
-          <span className="text-brand-600 ml-0.5" aria-hidden="true">
+          <span className="text-brand ml-0.5" aria-hidden="true">
             *
           </span>
         )}
@@ -252,4 +255,3 @@ export function ErrorState({ message, onRetry }: { message: string; onRetry?: ()
   );
 }
 
-export { cx };

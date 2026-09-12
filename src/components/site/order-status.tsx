@@ -2,7 +2,8 @@
 
 import type { OrderStatus, DeliveryType } from "@prisma/client";
 import { DELIVERY_FLOW, ORDER_STATUS_LABEL, PICKUP_FLOW, statusTone } from "@/lib/constants";
-import { Badge, cx } from "@/components/ui";
+import { Badge } from "@/components/ui";
+import { cx } from "@/lib/cx";
 
 // Reexportado para as telas que já importavam daqui.
 export { statusTone } from "@/lib/constants";
@@ -52,7 +53,7 @@ export function OrderTimeline({
                 className={cx(
                   "flex size-7 shrink-0 items-center justify-center rounded-full border-2 text-xs font-bold transition-colors",
                   done && "border-emerald-500 bg-emerald-500 text-white",
-                  current && "border-brand-600 bg-brand-600 text-white",
+                  current && "border-brand-600 bg-brand-500 text-coal-900",
                   !done && !current && "border-[var(--border)] text-[var(--text-muted)]",
                 )}
                 aria-hidden="true"
@@ -72,7 +73,7 @@ export function OrderTimeline({
               <p
                 className={cx(
                   "text-sm leading-7",
-                  current ? "font-bold text-brand-700 dark:text-brand-300" : done ? "font-medium" : "muted",
+                  current ? "font-bold text-brand" : done ? "font-medium" : "muted",
                 )}
               >
                 {ORDER_STATUS_LABEL[step]}

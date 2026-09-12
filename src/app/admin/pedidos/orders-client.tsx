@@ -14,7 +14,8 @@ import {
   PAYMENT_STATUS_LABEL,
 } from "@/lib/constants";
 import { statusTone } from "@/components/site/order-status";
-import { Badge, EmptyState, ErrorState, Select, Skeleton, cx } from "@/components/ui";
+import { Badge, EmptyState, ErrorState, Select, Skeleton } from "@/components/ui";
+import { cx } from "@/lib/cx";
 
 type OrderRow = {
   id: string;
@@ -133,7 +134,7 @@ function OrdersList() {
             type="checkbox"
             checked={autoRefresh}
             onChange={(event) => setAutoRefresh(event.target.checked)}
-            className="size-4 accent-[var(--color-brand-600)]"
+            className="size-4 accent-[var(--brand-ink)]"
           />
           Atualizar automaticamente
         </label>

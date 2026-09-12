@@ -5,7 +5,8 @@ import { useCallback, useEffect, useState } from "react";
 import { api, errorMessage } from "@/lib/api-client";
 import { useToast } from "@/components/providers";
 import { formatCents, parseMoneyToCents } from "@/lib/money";
-import { Badge, Button, EmptyState, ErrorState, Field, Input, Select, Skeleton, Textarea, cx } from "@/components/ui";
+import { Badge, Button, EmptyState, ErrorState, Field, Input, Select, Skeleton, Textarea } from "@/components/ui";
+import { cx } from "@/lib/cx";
 
 type Category = { id: string; name: string };
 type Product = {
@@ -307,13 +308,13 @@ export default function AdminProductsPage() {
             <label className="flex items-center gap-2 text-sm font-medium">
               <input type="checkbox" checked={form.available}
                 onChange={(e) => setForm({ ...form, available: e.target.checked })}
-                className="size-5 accent-[var(--color-brand-600)]" />
+                className="size-5 accent-[var(--brand-ink)]" />
               Disponível para venda
             </label>
             <label className="flex items-center gap-2 text-sm font-medium">
               <input type="checkbox" checked={form.active}
                 onChange={(e) => setForm({ ...form, active: e.target.checked })}
-                className="size-5 accent-[var(--color-brand-600)]" />
+                className="size-5 accent-[var(--brand-ink)]" />
               Aparece no cardápio
             </label>
           </div>

@@ -6,7 +6,8 @@ import { useState } from "react";
 import { useCart, useStoreSettings } from "@/components/providers";
 import { QuantityStepper } from "@/components/site/product-card";
 import { formatCents } from "@/lib/money";
-import { Button, EmptyState, ErrorState, Spinner, cx } from "@/components/ui";
+import { Button, EmptyState, ErrorState, Spinner } from "@/components/ui";
+import { cx } from "@/lib/cx";
 
 /**
  * Carrinho.

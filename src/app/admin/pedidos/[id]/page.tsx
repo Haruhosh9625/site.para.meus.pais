@@ -158,7 +158,7 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
       <div className="no-print flex flex-wrap items-center justify-between gap-3">
         <Link
           href="/admin/pedidos"
-          className="text-sm font-semibold text-brand-600 underline-offset-4 hover:underline"
+          className="text-sm font-semibold text-brand underline-offset-4 hover:underline"
         >
           ← Todos os pedidos
         </Link>
@@ -354,7 +354,7 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
           </dl>
           <Link
             href={`/admin/clientes?search=${encodeURIComponent(order.user.email)}`}
-            className="mt-3 inline-block text-sm font-semibold text-brand-600 underline-offset-4 hover:underline"
+            className="mt-3 inline-block text-sm font-semibold text-brand underline-offset-4 hover:underline"
           >
             Ver histórico deste cliente
           </Link>

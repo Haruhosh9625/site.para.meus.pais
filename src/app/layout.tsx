@@ -63,7 +63,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         {/* Atalho para quem navega por teclado pular direto ao conteúdo. */}
         <a
           href="#conteudo"
-          className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:rounded-lg focus:bg-brand-600 focus:px-4 focus:py-2 focus:text-white"
+          className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:rounded-lg focus:bg-brand-500 focus:px-4 focus:py-2 focus:text-coal-900"
         >
           Pular para o conteúdo
         </a>

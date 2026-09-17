@@ -183,7 +183,7 @@ export default function AdminCouponsPage() {
     <div className="space-y-4">
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-extrabold tracking-tight">Cupons</h1>
+          <h1 className="display text-[clamp(1.9rem,4vw,2.5rem)]">Cupons</h1>
           <p className="muted text-sm">
             {coupons.filter((c) => couponState(c).label === "Válido").length} válidos de{" "}
             {coupons.length} cadastrados
@@ -197,7 +197,7 @@ export default function AdminCouponsPage() {
       {error && <ErrorState message={error} onRetry={() => void load()} />}
 
       {creating && (
-        <form onSubmit={create} className="surface space-y-4 p-5" noValidate>
+        <form onSubmit={create} className="panel space-y-4 p-5" noValidate>
           <h2 className="font-bold">Novo cupom</h2>
           {formError && <ErrorState message={formError} />}
 
@@ -311,7 +311,7 @@ export default function AdminCouponsPage() {
           {coupons.map((coupon) => {
             const state = couponState(coupon);
             return (
-              <li key={coupon.id} className="surface flex flex-wrap items-center gap-4 p-4">
+              <li key={coupon.id} className="panel flex flex-wrap items-center gap-4 p-4">
                 <div className="min-w-40 flex-1">
                   <p className="flex flex-wrap items-center gap-2">
                     <span className="font-mono text-base font-bold">{coupon.code}</span>

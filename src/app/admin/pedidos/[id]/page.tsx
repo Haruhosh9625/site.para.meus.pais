@@ -172,7 +172,7 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
         </div>
       </div>
 
-      <header className="surface flex flex-wrap items-start justify-between gap-4 p-5">
+      <header className="panel flex flex-wrap items-start justify-between gap-4 p-5">
         <div>
           <p className="muted text-sm">Pedido</p>
           <h1 className="text-3xl font-extrabold tracking-tight tabular-nums">
@@ -297,7 +297,7 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
 
       <div className="grid gap-4 lg:grid-cols-2">
         {/* ------------------------------ cliente --------------------------- */}
-        <section className="surface p-5 text-sm">
+        <section className="panel p-5 text-sm">
           <h2 className="mb-3 font-bold">Cliente e entrega</h2>
           <dl className="space-y-2">
             <div className="flex gap-2">
@@ -361,7 +361,7 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
         </section>
 
         {/* ------------------------------- itens ---------------------------- */}
-        <section className="surface p-5">
+        <section className="panel p-5">
           <h2 className="mb-3 font-bold">Itens do pedido</h2>
           <ul className="divide-y text-sm">
             {order.items.map((item) => (
@@ -411,7 +411,7 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
 
       <div className="grid gap-4 lg:grid-cols-2">
         {/* ----------------------------- histórico -------------------------- */}
-        <section className="surface p-5">
+        <section className="panel p-5">
           <h2 className="mb-4 font-bold">Linha do tempo</h2>
           <OrderTimeline
             status={order.status}
@@ -421,7 +421,7 @@ export default function AdminOrderDetailPage({ params }: { params: Promise<{ id:
         </section>
 
         {/* ---------------------------- pagamentos -------------------------- */}
-        <section className="surface p-5">
+        <section className="panel p-5">
           <h2 className="mb-3 font-bold">Pagamentos</h2>
           {order.payments.length === 0 ? (
             <p className="muted text-sm">Nenhuma cobrança registrada.</p>

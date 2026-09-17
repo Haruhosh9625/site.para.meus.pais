@@ -56,7 +56,7 @@ export default function MeusPedidosPage() {
   if (!user) {
     return (
       <div className="mx-auto max-w-2xl px-4 py-10">
-        <h1 className="mb-6 text-3xl font-extrabold tracking-tight">Meus pedidos</h1>
+        <h1 className="display mb-7 text-[clamp(2.25rem,7vw,3.25rem)]">Meus pedidos</h1>
         <EmptyState
           icon="🔐"
           title="Entre para ver seus pedidos"
@@ -74,7 +74,7 @@ export default function MeusPedidosPage() {
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-6">
-      <h1 className="mb-6 text-3xl font-extrabold tracking-tight">Meus pedidos</h1>
+      <h1 className="display mb-7 text-[clamp(2.25rem,7vw,3.25rem)]">Meus pedidos</h1>
 
       {error && <ErrorState message={error} />}
 
@@ -92,7 +92,7 @@ export default function MeusPedidosPage() {
           <li key={order.id}>
             <Link
               href={`/pedido/${order.id}`}
-              className="surface block p-4 transition-shadow hover:shadow-[var(--shadow-soft)]"
+              className="panel block p-4 transition-shadow hover:shadow-[var(--shadow-soft)]"
             >
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div>

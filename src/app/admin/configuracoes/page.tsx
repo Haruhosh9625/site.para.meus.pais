@@ -195,7 +195,7 @@ export default function AdminSettingsPage() {
   return (
     <div className="space-y-4">
       <header>
-        <h1 className="text-2xl font-extrabold tracking-tight">Configurações</h1>
+        <h1 className="display text-[clamp(1.9rem,4vw,2.5rem)]">Configurações</h1>
         <p className="muted text-sm">
           Tudo que muda o funcionamento da loja está aqui — nada disso está fixo no código.
         </p>
@@ -205,7 +205,7 @@ export default function AdminSettingsPage() {
 
       <form onSubmit={save} className="space-y-4">
         {/* ------------------------- aberto / fechado ---------------------- */}
-        <section className="surface p-5">
+        <section className="panel p-5">
           <h2 className="mb-3 font-bold">Status da loja</h2>
 
           <label className="flex items-start gap-3 rounded-xl border p-4">
@@ -247,7 +247,7 @@ export default function AdminSettingsPage() {
         </section>
 
         {/* ---------------------------- dados da loja ---------------------- */}
-        <section className="surface space-y-4 p-5">
+        <section className="panel space-y-4 p-5">
           <h2 className="font-bold">Dados do estabelecimento</h2>
 
           <div className="grid gap-4 sm:grid-cols-2">
@@ -330,7 +330,7 @@ export default function AdminSettingsPage() {
         </section>
 
         {/* ----------------------------- horários -------------------------- */}
-        <section className="surface p-5">
+        <section className="panel p-5">
           <h2 className="mb-1 font-bold">Horário de funcionamento</h2>
           <p className="muted mb-4 text-xs">
             Para virar a madrugada, use um horário de fechamento menor que o de abertura
@@ -410,7 +410,7 @@ export default function AdminSettingsPage() {
         </section>
 
         {/* ---------------------------- agendamento ------------------------ */}
-        <section className="surface space-y-4 p-5">
+        <section className="panel space-y-4 p-5">
           <h2 className="font-bold">Agendamento de retirada</h2>
           <p className="muted text-xs">
             O cliente digita a hora em que vai buscar. O sistema aceita apenas horários dentro
@@ -472,7 +472,7 @@ export default function AdminSettingsPage() {
         </section>
 
         {/* ------------------------ entrega e pedido mínimo ---------------- */}
-        <section className="surface space-y-4 p-5">
+        <section className="panel space-y-4 p-5">
           <h2 className="font-bold">Entrega e pedido mínimo</h2>
 
           <div className="grid gap-4 sm:grid-cols-2">
@@ -532,7 +532,7 @@ export default function AdminSettingsPage() {
         </section>
 
         {/* ------------------------ formas de pagamento -------------------- */}
-        <section className="surface p-5">
+        <section className="panel p-5">
           <h2 className="mb-3 font-bold">Formas de pagamento aceitas</h2>
           <div className="flex flex-wrap gap-5">
             <label className="flex items-center gap-2 text-sm font-medium">
@@ -588,7 +588,7 @@ export default function AdminSettingsPage() {
       </form>
 
       {/* --------------------------- áreas de entrega ---------------------- */}
-      <section className="surface p-5">
+      <section className="panel p-5">
         <h2 className="mb-1 font-bold">Bairros atendidos</h2>
         <p className="muted mb-4 text-xs">
           Cada bairro pode ter a própria taxa e tempo estimado. Bairros fora desta lista usam a

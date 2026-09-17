@@ -9,24 +9,25 @@ painel administrativo. Pensado primeiro para o celular.
 ## Índice
 
 1. [O que já vem funcionando](#o-que-já-vem-funcionando)
-2. [Stack](#stack)
-3. [Instalação](#instalação)
-4. [Configuração do `.env`](#configuração-do-env)
-5. [Banco de dados](#banco-de-dados)
-6. [Administrador](#administrador)
-7. [Supabase: banco e login](#supabase-banco-e-login)
-8. [Agendamento de retirada](#agendamento-de-retirada)
-9. [Gateway de pagamento](#gateway-de-pagamento)
-10. [Webhooks](#webhooks)
-11. [Rodando localmente](#rodando-localmente)
-12. [Testes](#testes)
-13. [Deploy](#deploy)
-14. [Backup e restauração](#backup-e-restauração)
-15. [Estrutura do projeto](#estrutura-do-projeto)
-16. [Rotas de API](#rotas-de-api)
-17. [Como o dinheiro é tratado](#como-o-dinheiro-é-tratado)
-18. [Segurança](#segurança)
-19. [Como estender](#como-estender)
+2. [Sistema visual](#sistema-visual)
+3. [Stack](#stack)
+4. [Instalação](#instalação)
+5. [Configuração do `.env`](#configuração-do-env)
+6. [Banco de dados](#banco-de-dados)
+7. [Administrador](#administrador)
+8. [Supabase: banco e login](#supabase-banco-e-login)
+9. [Agendamento de retirada](#agendamento-de-retirada)
+10. [Gateway de pagamento](#gateway-de-pagamento)
+11. [Webhooks](#webhooks)
+12. [Rodando localmente](#rodando-localmente)
+13. [Testes](#testes)
+14. [Deploy](#deploy)
+15. [Backup e restauração](#backup-e-restauração)
+16. [Estrutura do projeto](#estrutura-do-projeto)
+17. [Rotas de API](#rotas-de-api)
+18. [Como o dinheiro é tratado](#como-o-dinheiro-é-tratado)
+19. [Segurança](#segurança)
+20. [Como estender](#como-estender)
 
 ---
 
@@ -80,6 +81,46 @@ painel administrativo. Pensado primeiro para o celular.
 - Idempotência em pedidos e em eventos de webhook.
 - Log de auditoria de eventos sensíveis.
 - Rate limiting persistido no banco.
+
+---
+
+## Sistema visual
+
+A identidade é **brasa**: preto frio de base, amarelo da marca e tipografia
+de cartaz. Três materiais, e a diferença entre eles não é estética — é de
+desempenho:
+
+| Classe        | O que é                                   | Onde usar |
+| ------------- | ----------------------------------------- | --------- |
+| `.glass`      | Vidro de verdade: desfoca o que está atrás | Peças que **flutuam** sobre conteúdo que rola — barra do topo, navegação de baixo, barras de ação, pastilhas sobre foto |
+| `.panel`      | Mesmo material, translúcido, **sem** desfoque | Peças **paradas** no fluxo — cartão de produto, formulário, resumo do pedido |
+| `.mesh`       | Malha de brasa sobre preto frio            | Herói, chamada final, rodapé |
+
+**Por que a separação existe.** `backdrop-filter` obriga o navegador a
+promover a peça a uma camada de composição própria e refazer o desfoque a
+cada quadro de rolagem. Uma barra fixa faz isso bem; vinte cartões de
+cardápio fazem o celular de entrada engasgar. Medido nesta página: 13
+camadas de desfoque simultâneas antes da separação, 6 depois.
+
+**Vidro só parece vidro quando há algo atrás para refratar.** Sobre branco
+chapado, `backdrop-filter` não produz nada visível. Por isso toda tela do
+cliente tem `.wash` (lavagem de gradiente) atrás e as seções escuras usam
+`.mesh`. Não é enfeite: é o que dá substância ao material.
+
+**Tipografia.** `Anton` para os títulos (condensada, caixa alta, tracking
+fechado — a classe `.display`) e `Archivo` para tudo que se lê de perto.
+As duas vêm por `next/font`, que as baixa no build e serve do nosso
+domínio: nenhum pedido a terceiro no carregamento e nada de CLS.
+
+**Acessibilidade do vidro.** Quem liga *reduzir transparência* no sistema
+recebe superfícies chapadas (`prefers-reduced-transparency`), e quem pede
+menos animação não vê entrada por scroll nem reflexo. O contraste do texto
+sobre vidro foi medido em pixel, nos dois temas — a medição encontrou um
+rótulo em 3,5:1 no herói, que foi corrigido para 5,8:1.
+
+**Imagem de compartilhamento.** `src/app/opengraph-image.tsx` desenha em
+código a figura que aparece quando o link vai para o WhatsApp. Sai do banco
+(nome da loja, modo de retirada), então nunca fica desatualizada.
 
 ---
 
@@ -704,6 +745,7 @@ src/
   lib/                     Código que roda nos dois lados
     money.ts               Centavos: formatar, converter, percentual
     constants.ts           Rótulos de status, fluxos, cores de gráfico
+    cx.ts                  Junta classes CSS (os dois lados usam)
     format.ts              Datas, telefone, CEP, endereço
     api-client.ts          fetch do navegador com token CSRF
 
@@ -747,12 +789,14 @@ src/
     ui/                    Button, Field, Input, Badge, estados vazios…
     providers/             Sessão, configurações, carrinho, avisos
     site/                  Logo, navegação, cartão de produto, status,
-                           escolha do horário de retirada
+                           escolha do horário de retirada, entrada por scroll
     admin/                 Estrutura do painel e gráficos SVG
 
   app/
-    layout.tsx             Layout raiz, metadados, providers
-    globals.css            Tokens do design, tema claro/escuro, impressão
+    layout.tsx             Layout raiz, fontes, metadados, providers
+    opengraph-image.tsx    Imagem de compartilhamento, desenhada em código
+    icon.svg               Ícone da aba
+    globals.css            SISTEMA VISUAL — vidro, painel, malha, cartaz
     (site)/                Páginas do cliente
     admin/                 Páginas do administrador
     api/                   Route Handlers

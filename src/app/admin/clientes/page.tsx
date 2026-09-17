@@ -62,14 +62,14 @@ function CustomersList() {
   return (
     <div className="space-y-4">
       <header>
-        <h1 className="text-2xl font-extrabold tracking-tight">Clientes</h1>
+        <h1 className="display text-[clamp(1.9rem,4vw,2.5rem)]">Clientes</h1>
         <p className="muted text-sm">
           {total} {total === 1 ? "cliente cadastrado" : "clientes cadastrados"}
           {customers.length > 0 && ` · ${formatCents(totalRevenue)} em compras (lista atual)`}
         </p>
       </header>
 
-      <div className="surface p-4">
+      <div className="panel p-4">
         <label htmlFor="busca-clientes" className="mb-1 block text-xs font-semibold">
           Buscar cliente
         </label>
@@ -108,7 +108,7 @@ function CustomersList() {
       ) : (
         <>
           {/* Tabela no desktop */}
-          <div className="surface hidden overflow-x-auto lg:block">
+          <div className="panel hidden overflow-x-auto lg:block">
             <table className="w-full text-sm">
               <caption className="sr-only">Lista de clientes com métricas de compra</caption>
               <thead className="border-b bg-[var(--surface-sunken)] text-left">
@@ -157,7 +157,7 @@ function CustomersList() {
           {/* Cartões no celular */}
           <ul className="space-y-2 lg:hidden">
             {customers.map((customer) => (
-              <li key={customer.id} className="surface p-4">
+              <li key={customer.id} className="panel p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="font-semibold">{customer.name}</p>

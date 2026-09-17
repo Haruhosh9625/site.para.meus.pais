@@ -107,7 +107,7 @@ export default function CadastroPage() {
     return (
       <div className="mx-auto max-w-md px-4 py-16 text-center">
         <p className="text-5xl" aria-hidden="true">📬</p>
-        <h1 className="mt-4 text-2xl font-extrabold tracking-tight">Confirme seu e-mail</h1>
+        <h1 className="display mt-5 text-4xl">Confirme seu e-mail</h1>
         <p className="muted mt-3">{pendingConfirmation}</p>
         <p className="muted mt-2 text-sm">
           Enviamos para <strong>{form.email}</strong>. Se não chegar, veja a caixa de spam.
@@ -123,11 +123,11 @@ export default function CadastroPage() {
     <div className="mx-auto max-w-md px-4 py-10">
       <div className="mb-8 text-center">
         <LogoMark className="mx-auto size-14" />
-        <h1 className="mt-4 text-2xl font-extrabold tracking-tight">Criar sua conta</h1>
+        <h1 className="display mt-5 text-4xl">Criar sua conta</h1>
         <p className="muted mt-1 text-sm">É rápido — e depois é só pedir.</p>
       </div>
 
-      <form onSubmit={handleSubmit} className="surface space-y-4 p-6" noValidate>
+      <form onSubmit={handleSubmit} className="panel space-y-4 p-6" noValidate>
         {error && <ErrorState message={error} />}
 
         <Field label="Nome completo" required error={fieldErrors.name}>

@@ -88,7 +88,7 @@ export default function MinhaContaPage() {
     <div className="mx-auto max-w-2xl px-4 py-6">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-extrabold tracking-tight">Minha conta</h1>
+          <h1 className="display text-[clamp(2.25rem,7vw,3.25rem)]">Minha conta</h1>
           <p className="muted mt-1 text-sm">
             Cliente desde {formatDate(user.createdAt)}
             {user.role === "ADMIN" && " · Administrador"}
@@ -101,7 +101,7 @@ export default function MinhaContaPage() {
 
       {user.role === "ADMIN" && (
         <Link href="/admin" className="mb-4 block">
-          <div className="surface flex items-center justify-between p-4 transition-shadow hover:shadow-[var(--shadow-soft)]">
+          <div className="panel flex items-center justify-between p-4 transition-shadow hover:shadow-[var(--shadow-soft)]">
             <div>
               <p className="font-semibold">Painel administrativo</p>
               <p className="muted text-sm">Pedidos, cardápio, clientes e financeiro</p>
@@ -172,7 +172,7 @@ function ProfileForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="surface space-y-4 p-5" noValidate>
+    <form onSubmit={handleSubmit} className="panel space-y-4 p-5" noValidate>
       {error && <ErrorState message={error} />}
       <Field label="Nome completo" required error={fieldErrors.name}>
         {({ id, invalid }) => (
@@ -286,7 +286,7 @@ function AddressManager({
       {error && <ErrorState message={error} />}
 
       {addresses.map((address) => (
-        <div key={address.id} className="surface p-4">
+        <div key={address.id} className="panel p-4">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <p className="flex items-center gap-2 font-semibold">
@@ -335,7 +335,7 @@ function AddressManager({
       )}
 
       {(creating || editing) && (
-        <form onSubmit={save} className="surface space-y-3 p-5" noValidate>
+        <form onSubmit={save} className="panel space-y-3 p-5" noValidate>
           <h2 className="font-bold">{editing ? "Editar endereço" : "Novo endereço"}</h2>
 
           <Field label="Nome do endereço">
@@ -477,7 +477,7 @@ function PasswordForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="surface space-y-4 p-5" noValidate>
+    <form onSubmit={handleSubmit} className="panel space-y-4 p-5" noValidate>
       {error && <ErrorState message={error} />}
       <p className="muted text-sm">
         Ao trocar a senha, todas as sessões abertas em outros aparelhos são encerradas.
@@ -539,7 +539,7 @@ function NotificationList() {
   return (
     <ul className="space-y-2">
       {notifications.map((notification) => (
-        <li key={notification.id} className="surface p-4">
+        <li key={notification.id} className="panel p-4">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <p className="font-semibold">{notification.title}</p>

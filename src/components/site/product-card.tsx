@@ -31,13 +31,13 @@ export function QuantityStepper({
   disabled?: boolean;
 }) {
   const buttonClass = cx(
-    "tap flex items-center justify-center rounded-lg font-bold transition-colors",
-    "hover:bg-[var(--surface-sunken)] disabled:opacity-40 disabled:hover:bg-transparent",
+    "tap flex items-center justify-center rounded-xl font-bold transition-colors",
+    "hover:bg-[var(--glass-bg-strong)] disabled:opacity-40 disabled:hover:bg-transparent",
     size === "sm" ? "size-9 text-lg" : "size-11 text-xl",
   );
 
   return (
-    <div className="inline-flex items-center rounded-xl border bg-[var(--surface)]">
+    <div className="panel inline-flex items-center rounded-2xl">
       <button
         type="button"
         className={buttonClass}
@@ -76,27 +76,51 @@ export function ProductCard({ product }: { product: MenuProduct }) {
   return (
     <article
       className={cx(
-        "surface flex gap-3 overflow-hidden p-3 transition-shadow sm:flex-col sm:gap-0 sm:p-0",
-        unavailable ? "opacity-60" : "hover:shadow-[var(--shadow-soft)]",
+        "panel reveal group relative flex gap-3 overflow-hidden p-3",
+        "sm:flex-col sm:gap-0 sm:p-0",
+        unavailable ? "opacity-60" : "lift",
       )}
     >
-      <div className="relative size-24 shrink-0 overflow-hidden rounded-xl bg-[var(--surface-sunken)] sm:size-auto sm:aspect-square sm:rounded-none">
+      <div
+        className={cx(
+          "relative size-24 shrink-0 overflow-hidden rounded-2xl bg-coal-900",
+          "sm:size-auto sm:aspect-4/3 sm:rounded-none",
+        )}
+      >
         {product.imageUrl ? (
           <Image
             src={product.imageUrl}
             alt={product.name}
             fill
             sizes="(max-width: 640px) 96px, (max-width: 1024px) 50vw, 33vw"
-            className="object-cover"
+            /* A foto aproxima devagar no hover: o cartão ganha vida sem mexer no texto. */
+            className="object-cover transition-transform duration-700 ease-out group-hover:scale-105 motion-reduce:transition-none motion-reduce:group-hover:scale-100"
           />
         ) : (
           <div className="muted flex h-full items-center justify-center text-3xl" aria-hidden="true">
             🍢
           </div>
         )}
+
+        {/*
+          Véu do escuro para o transparente no pé da foto. Dá lugar para a
+          pastilha de preço pousar e amarra a imagem ao corpo do cartão.
+        */}
+        <div
+          aria-hidden="true"
+          className="absolute inset-x-0 bottom-0 hidden h-2/5 bg-linear-to-t from-coal-950/80 to-transparent sm:block"
+        />
+
+        {/* O preço mora sobre a foto, em pastilha de vidro. */}
+        <p className="absolute right-2.5 bottom-2.5 hidden sm:block">
+          <span className="glass-pill-dark inline-block px-3 py-1.5 text-sm font-bold tabular-nums">
+            {formatCents(product.priceCents)}
+          </span>
+        </p>
+
         {unavailable && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/55">
-            <span className="rounded-md bg-white px-2 py-1 text-[11px] font-bold text-coal-900">
+          <div className="absolute inset-0 flex items-center justify-center bg-coal-950/65">
+            <span className="glass-pill px-3 py-1.5 text-[11px] font-bold tracking-wide uppercase">
               Indisponível
             </span>
           </div>
@@ -104,11 +128,14 @@ export function ProductCard({ product }: { product: MenuProduct }) {
       </div>
 
       <div className="flex min-w-0 flex-1 flex-col sm:p-4">
-        <h3 className="font-semibold text-balance">{product.name}</h3>
-        <p className="muted mt-1 line-clamp-2 text-sm sm:line-clamp-3">{product.description}</p>
+        <h3 className="text-base leading-tight font-bold text-balance">{product.name}</h3>
+        <p className="muted mt-1.5 line-clamp-2 text-sm sm:line-clamp-3">{product.description}</p>
 
         <div className="mt-auto flex items-center justify-between gap-3 pt-3">
-          <p className="text-lg font-bold text-brand">{formatCents(product.priceCents)}</p>
+          {/* No celular o preço fica na linha do botão; no desktop, sobre a foto. */}
+          <p className="text-lg font-bold tabular-nums text-brand sm:hidden">
+            {formatCents(product.priceCents)}
+          </p>
 
           {unavailable ? (
             <span className="muted text-xs font-semibold">Esgotado</span>
@@ -121,6 +148,7 @@ export function ProductCard({ product }: { product: MenuProduct }) {
           ) : (
             <Button
               size="sm"
+              className="sm:w-full"
               onClick={() => {
                 add(product.id, 1);
                 push(`${product.name} adicionado ao carrinho`, "success");

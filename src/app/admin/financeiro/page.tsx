@@ -93,7 +93,7 @@ export default function AdminFinancePage() {
     <div className="space-y-4">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-extrabold tracking-tight">Financeiro</h1>
+          <h1 className="display text-[clamp(1.9rem,4vw,2.5rem)]">Financeiro</h1>
           <p className="muted text-sm">{label}</p>
         </div>
         <div className="flex flex-wrap items-end gap-2">
@@ -196,7 +196,7 @@ export default function AdminFinancePage() {
           </section>
 
           <div className="grid gap-4 lg:grid-cols-3">
-            <section className="surface p-5 lg:col-span-2">
+            <section className="panel p-5 lg:col-span-2">
               <h2 className="mb-4 font-bold">Faturamento diário (30 dias)</h2>
               <BarChart
                 title="Faturamento diário dos últimos 30 dias"
@@ -209,7 +209,7 @@ export default function AdminFinancePage() {
               />
             </section>
 
-            <section className="surface p-5">
+            <section className="panel p-5">
               <h2 className="mb-4 font-bold">Por forma de pagamento</h2>
               {paymentTotal > 0 ? (
                 <DonutBreakdown
@@ -242,7 +242,7 @@ export default function AdminFinancePage() {
           </div>
 
           <div className="grid gap-4 lg:grid-cols-2">
-            <section className="surface p-5">
+            <section className="panel p-5">
               <h2 className="mb-4 font-bold">Produtos mais vendidos</h2>
               <RankingBars
                 data={report.topProducts.map((product) => ({
@@ -255,7 +255,7 @@ export default function AdminFinancePage() {
               />
             </section>
 
-            <section className="surface p-5">
+            <section className="panel p-5">
               <h2 className="mb-4 font-bold">Entrega x retirada</h2>
               {report.deliverySplit.length === 0 ? (
                 <p className="muted py-6 text-center text-sm">Sem dados no período.</p>

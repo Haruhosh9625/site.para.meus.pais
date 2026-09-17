@@ -1,8 +1,31 @@
 import type { Metadata, Viewport } from "next";
+import { Anton, Archivo } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/providers";
+import { Reveal } from "@/components/site/reveal";
 import { getPublicSettings, type PublicSettings } from "@/server/services/settings";
 import { logger } from "@/server/logger";
+
+/*
+  As duas fontes do projeto, servidas do NOSSO domínio.
+
+  `next/font` baixa os arquivos no build e os hospeda junto da aplicação:
+  nenhum pedido a servidor de terceiro no carregamento da página — menos um
+  salto de rede, menos um rastreador e nada de CLS, porque o Next já injeta
+  as métricas da fonte para reservar o espaço certo antes de ela chegar.
+*/
+const anton = Anton({
+  subsets: ["latin"],
+  weight: "400",
+  variable: "--font-anton",
+  display: "swap",
+});
+
+const archivo = Archivo({
+  subsets: ["latin"],
+  variable: "--font-archivo",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: {
@@ -58,7 +81,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   }
 
   return (
-    <html lang="pt-BR">
+    <html lang="pt-BR" className={`${anton.variable} ${archivo.variable}`}>
       <body className="min-h-dvh">
         {/* Atalho para quem navega por teclado pular direto ao conteúdo. */}
         <a
@@ -67,6 +90,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         >
           Pular para o conteúdo
         </a>
+        <Reveal />
         <Providers initialSettings={settings}>{children}</Providers>
       </body>
     </html>

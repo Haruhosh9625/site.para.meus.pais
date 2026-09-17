@@ -65,7 +65,7 @@ export function MenuClient({ categories }: { categories: Category[] }) {
     <div className="pb-8">
       <div className="mx-auto max-w-5xl px-4 pt-6">
         <header className="mb-4">
-          <h1 className="text-3xl font-extrabold tracking-tight">Cardápio</h1>
+          <h1 className="display text-[clamp(2.25rem,7vw,3.25rem)]">Cardápio</h1>
           <p className="muted mt-1 text-sm">
             Escolha os espetos, adicione o Completo se quiser e feche o pedido.
           </p>
@@ -81,7 +81,7 @@ export function MenuClient({ categories }: { categories: Category[] }) {
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             placeholder="Buscar item do cardápio..."
-            className="w-full rounded-xl border bg-[var(--surface)] px-4 py-3 text-base placeholder:text-[var(--text-muted)]"
+            className="panel w-full rounded-2xl px-5 py-3.5 text-base placeholder:text-[var(--text-muted)]"
           />
         </div>
       </div>
@@ -90,19 +90,19 @@ export function MenuClient({ categories }: { categories: Category[] }) {
       {!search && categories.length > 1 && (
         <nav
           aria-label="Categorias do cardápio"
-          className="sticky top-16 z-30 border-y bg-[var(--surface)]/95 backdrop-blur"
+          className="sticky top-[4.5rem] z-30 -mx-1 px-1 py-2 sm:top-[5rem]"
         >
-          <ul className="mx-auto flex max-w-5xl gap-2 overflow-x-auto px-4 py-2.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <ul className="mx-auto flex max-w-5xl gap-2 overflow-x-auto px-4 py-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {categories.map((category) => (
               <li key={category.id}>
                 <a
                   href={`#categoria-${category.slug}`}
                   aria-current={activeCategory === category.slug ? "true" : undefined}
                   className={cx(
-                    "tap inline-flex items-center rounded-full px-4 text-sm font-semibold whitespace-nowrap transition-colors",
+                    "tap inline-flex items-center rounded-full px-5 text-sm font-bold whitespace-nowrap transition-all",
                     activeCategory === category.slug
                       ? "bg-brand-500 text-coal-900"
-                      : "bg-[var(--surface-sunken)] hover:bg-[var(--surface-muted)]",
+                      : "glass-pill hover:bg-[var(--glass-bg-strong)]",
                   )}
                 >
                   {category.name}
@@ -158,10 +158,10 @@ export function MenuClient({ categories }: { categories: Category[] }) {
       {/* Barra do carrinho — sempre visível quando há itens. */}
       {itemCount > 0 && (
         <div
-          className="fade-in fixed inset-x-0 bottom-16 z-40 border-t bg-[var(--surface)] px-4 py-3 shadow-[0_-8px_24px_-12px_rgba(0,0,0,.25)] md:bottom-0"
+          className="fade-in fixed inset-x-0 bottom-19 z-40 px-3 md:bottom-4"
           style={{ paddingBottom: "calc(0.75rem + env(safe-area-inset-bottom))" }}
         >
-          <div className="mx-auto flex max-w-5xl items-center gap-3">
+          <div className="action-bar action-bar-float mx-auto flex max-w-5xl items-center gap-3">
             <div className="min-w-0 flex-1">
               <p className="text-sm font-semibold">
                 {itemCount} {itemCount === 1 ? "item" : "itens"} no carrinho

@@ -27,22 +27,45 @@ const BUTTON_VARIANTS: Record<NonNullable<ButtonProps["variant"]>, string> = {
     O botão da marca é amarelo, e amarelo é claro: texto branco em cima dele
     fica em 1,85:1 — ilegível. Por isso o texto é escuro em TODOS os estados,
     e o pressionado escurece só até o 600, que ainda aceita texto escuro.
+
+    O que dá volume à peça é o degradê curto (mais claro em cima, como luz
+    caindo de frente), o fio de luz na aresta superior e a sombra colorida —
+    sombra amarelada em vez de cinza, porque um objeto amarelo tinge a
+    própria sombra.
   */
-  primary:
-    "bg-brand-500 text-coal-900 hover:bg-brand-400 active:bg-brand-600 " +
-    "disabled:bg-brand-200 disabled:text-coal-500 shadow-sm",
-  secondary:
-    "bg-coal-900 text-white hover:bg-coal-800 active:bg-coal-950 disabled:opacity-50 dark:bg-coal-100 dark:text-coal-900",
-  outline:
-    "border border-[var(--border)] bg-[var(--surface)] hover:bg-[var(--surface-sunken)] text-[var(--text)]",
+  primary: [
+    "bg-linear-to-b from-brand-400 to-brand-500 text-coal-900",
+    "shadow-[inset_0_1px_0_0_rgb(255_255_255/0.45),0_10px_24px_-10px_rgb(217_148_0/0.7)]",
+    "hover:from-brand-300 hover:to-brand-400",
+    "active:from-brand-500 active:to-brand-600 active:shadow-[inset_0_2px_4px_0_rgb(0_0_0/0.18)]",
+    "disabled:from-brand-200 disabled:to-brand-200 disabled:text-coal-500 disabled:shadow-none",
+  ].join(" "),
+  secondary: [
+    "bg-linear-to-b from-coal-800 to-coal-900 text-white",
+    "shadow-[inset_0_1px_0_0_rgb(255_255_255/0.14),0_10px_24px_-12px_rgb(0_0_0/0.6)]",
+    "hover:from-coal-700 hover:to-coal-800 active:from-coal-900 active:to-coal-950",
+    "disabled:opacity-50",
+    "dark:from-coal-100 dark:to-coal-200 dark:text-coal-900 dark:hover:from-white dark:hover:to-coal-100",
+  ].join(" "),
+  /*
+    O contorno virou vidro. O raio vem da classe de tamanho, não do `.glass`:
+    utilitário do Tailwind ganha de classe de componente na cascata.
+  */
+  outline: "panel glass-sheen text-[var(--text)] hover:bg-[var(--glass-bg-strong)]",
   ghost: "hover:bg-[var(--surface-sunken)] text-[var(--text)]",
-  danger: "bg-red-600 text-white hover:bg-red-700 active:bg-red-800 disabled:bg-red-300",
+  danger: [
+    "bg-linear-to-b from-red-500 to-red-600 text-white",
+    "shadow-[inset_0_1px_0_0_rgb(255_255_255/0.28),0_10px_24px_-12px_rgb(220_38_38/0.65)]",
+    "hover:from-red-400 hover:to-red-500 active:from-red-600 active:to-red-700",
+    "disabled:from-red-300 disabled:to-red-300 disabled:shadow-none",
+  ].join(" "),
 };
 
 const BUTTON_SIZES: Record<NonNullable<ButtonProps["size"]>, string> = {
-  sm: "text-sm px-3 py-2 rounded-lg gap-1.5",
-  md: "text-sm px-4 py-2.5 rounded-xl gap-2",
-  lg: "text-base px-5 py-3.5 rounded-xl gap-2 font-semibold",
+  sm: "text-sm px-3.5 py-2 rounded-xl gap-1.5",
+  md: "text-sm px-5 py-2.5 rounded-xl gap-2",
+  /* O botão grande é o de confirmar pedido: texto maior e tracking aberto. */
+  lg: "text-base px-6 py-4 rounded-2xl gap-2.5 font-bold tracking-wide",
 };
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
@@ -55,8 +78,14 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
       disabled={disabled || loading}
       aria-busy={loading || undefined}
       className={cx(
-        "tap inline-flex items-center justify-center font-medium transition-colors",
-        "disabled:cursor-not-allowed",
+        "tap relative isolate inline-flex items-center justify-center overflow-hidden font-semibold",
+        "transition-[background,box-shadow,transform] duration-200",
+        // Afunda 1px ao ser pressionado: resposta física ao toque.
+        "active:translate-y-px disabled:cursor-not-allowed disabled:active:translate-y-0",
+        "motion-reduce:active:translate-y-0",
+        variant === "primary" || variant === "secondary" || variant === "danger"
+          ? "glass-sheen"
+          : "",
         BUTTON_VARIANTS[variant],
         BUTTON_SIZES[size],
         fullWidth && "w-full",
@@ -122,8 +151,16 @@ export function Field({ label, error, hint, required, children }: FieldProps) {
   );
 }
 
+/*
+  Campos de formulário em vidro.
+
+  O `text-base` (16px) não é escolha estética: em iOS, campo com fonte menor
+  que 16px faz o Safari dar zoom sozinho ao receber o foco, e a página fica
+  torta. A borda acende no amarelo escuro ao focar, junto com o anel de foco
+  do navegador.
+*/
 const CONTROL_CLASS =
-  "w-full rounded-xl border bg-[var(--surface)] px-3.5 py-3 text-base transition-colors " +
+  "panel w-full rounded-xl px-4 py-3 text-base transition-colors " +
   "placeholder:text-[var(--text-muted)] focus:border-brand-500 disabled:opacity-60";
 
 export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputElement> & { invalid?: boolean }>(

@@ -188,7 +188,7 @@ export default function CheckoutPage() {
     return (
       <div className="mx-auto max-w-2xl px-4 py-16 text-center">
         <p className="text-5xl" aria-hidden="true">🛒</p>
-        <h1 className="mt-4 text-2xl font-bold">Seu carrinho está vazio</h1>
+        <h1 className="display mt-5 text-4xl">Seu carrinho está vazio</h1>
         <p className="muted mt-2">Adicione itens do cardápio para finalizar um pedido.</p>
         <Link href="/cardapio" className="mt-6 inline-block">
           <Button size="lg">Ver cardápio</Button>
@@ -201,7 +201,7 @@ export default function CheckoutPage() {
 
   return (
     <form onSubmit={handleSubmit} className="mx-auto max-w-2xl px-4 py-6 pb-8 md:pb-10" noValidate>
-      <h1 className="mb-1 text-3xl font-extrabold tracking-tight">Finalizar pedido</h1>
+      <h1 className="display mb-2 text-[clamp(2.25rem,7vw,3.25rem)]">Finalizar pedido</h1>
       <p className="muted mb-6 text-sm">Confira tudo antes de confirmar.</p>
 
       {error && (
@@ -211,7 +211,7 @@ export default function CheckoutPage() {
       )}
 
       {/* ------------------------- 1. seus dados --------------------------- */}
-      <section className="surface mb-4 p-5">
+      <section className="panel mb-4 p-5">
         <h2 className="mb-3 flex items-center gap-2 font-bold">
           <Step n={1} /> Seus dados
         </h2>
@@ -238,7 +238,7 @@ export default function CheckoutPage() {
       </section>
 
       {/* ----------------------- 2. horário da retirada -------------------- */}
-      <section className="surface mb-4 p-5">
+      <section className="panel mb-4 p-5">
         <h2 className="mb-3 flex items-center gap-2 font-bold">
           <Step n={2} /> Quando você vai retirar
         </h2>
@@ -428,7 +428,7 @@ export default function CheckoutPage() {
       </section>
 
       {/* ------------------------- 3. pagamento ---------------------------- */}
-      <section className="surface mb-4 p-5">
+      <section className="panel mb-4 p-5">
         <h2 className="mb-3 flex items-center gap-2 font-bold">
           <Step n={3} /> Forma de pagamento
         </h2>
@@ -512,7 +512,7 @@ export default function CheckoutPage() {
       </section>
 
       {/* -------------------------- 4. observações ------------------------- */}
-      <section className="surface mb-4 p-5">
+      <section className="panel mb-4 p-5">
         <h2 className="mb-3 flex items-center gap-2 font-bold">
           <Step n={4} /> Observações
         </h2>
@@ -531,7 +531,7 @@ export default function CheckoutPage() {
       </section>
 
       {/* --------------------------- 5. resumo ----------------------------- */}
-      <section className="surface mb-4 p-5">
+      <section className="panel mb-4 p-5">
         <h2 className="mb-3 flex items-center gap-2 font-bold">
           <Step n={5} /> Resumo do pedido
         </h2>
@@ -584,10 +584,10 @@ export default function CheckoutPage() {
       </section>
 
       <div
-        className="fixed inset-x-0 bottom-16 z-40 border-t bg-[var(--surface)] px-4 py-3 md:static md:border-0 md:bg-transparent md:px-0"
-        style={{ paddingBottom: "calc(0.75rem + env(safe-area-inset-bottom))" }}
+        className="fixed inset-x-0 z-40 px-3 md:static md:px-0"
+        style={{ bottom: "calc(4.75rem + env(safe-area-inset-bottom))" }}
       >
-        <div className="mx-auto max-w-2xl">
+        <div className="action-bar mx-auto max-w-2xl">
           <Button
             type="submit"
             size="lg"

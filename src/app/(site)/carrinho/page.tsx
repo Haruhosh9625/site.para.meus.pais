@@ -38,7 +38,7 @@ export default function CarrinhoPage() {
   if (items.length === 0) {
     return (
       <div className="mx-auto max-w-3xl px-4 py-10">
-        <h1 className="mb-6 text-3xl font-extrabold tracking-tight">Carrinho</h1>
+        <h1 className="display mb-7 text-[clamp(2.25rem,7vw,3.25rem)]">Carrinho</h1>
         <EmptyState
           icon="🛒"
           title="Seu carrinho está vazio"
@@ -58,7 +58,7 @@ export default function CarrinhoPage() {
   return (
     <div className="mx-auto max-w-3xl px-4 py-6 pb-8 md:pb-10">
       <div className="mb-6 flex items-center justify-between gap-4">
-        <h1 className="text-3xl font-extrabold tracking-tight">Carrinho</h1>
+        <h1 className="display text-[clamp(2.25rem,7vw,3.25rem)]">Carrinho</h1>
         {confirmClear ? (
           <div className="flex items-center gap-2">
             <span className="muted text-sm">Esvaziar?</span>
@@ -98,7 +98,7 @@ export default function CarrinhoPage() {
         ))}
 
       {/* ------------------------------- itens ------------------------------ */}
-      <ul className="surface divide-y overflow-hidden">
+      <ul className="panel divide-y overflow-hidden">
         {(quote?.lines ?? []).map((line) => (
           <li key={line.productId} className="flex gap-3 p-4">
             <div className="relative size-20 shrink-0 overflow-hidden rounded-xl bg-[var(--surface-sunken)]">
@@ -157,7 +157,7 @@ export default function CarrinhoPage() {
           confunde — então o bloco inteiro aparece apenas quando a entrega
           está ligada em /admin/configuracoes. */}
       {settings?.allowDelivery ? (
-      <fieldset className="surface mt-4 p-4">
+      <fieldset className="panel mt-4 p-4">
         <legend className="px-1 text-sm font-semibold">Como você quer receber?</legend>
         <div className="mt-2 grid grid-cols-2 gap-2">
           {(
@@ -196,7 +196,7 @@ export default function CarrinhoPage() {
         )}
       </fieldset>
       ) : (
-        <p className="surface mt-4 flex items-start gap-2.5 p-4 text-sm">
+        <p className="panel mt-4 flex items-start gap-2.5 p-4 text-sm">
           <span className="text-lg leading-none" aria-hidden="true">🏪</span>
           <span>
             <strong className="block">Retirada agendada</strong>
@@ -209,7 +209,7 @@ export default function CarrinhoPage() {
       )}
 
       {/* -------------------------------- cupom ----------------------------- */}
-      <div className="surface mt-4 p-4">
+      <div className="panel mt-4 p-4">
         <label htmlFor="cupom" className="text-sm font-semibold">
           Cupom de desconto
         </label>
@@ -253,7 +253,7 @@ export default function CarrinhoPage() {
       </div>
 
       {/* -------------------------------- resumo ---------------------------- */}
-      <div className="surface mt-4 p-4">
+      <div className="panel mt-4 p-4">
         <h2 className="mb-3 font-bold">Resumo</h2>
         <dl className="space-y-2 text-sm">
           <div className="flex justify-between">
@@ -312,12 +312,18 @@ export default function CarrinhoPage() {
         )}
       </div>
 
-      {/* Botão fixo: finalizar sempre ao alcance do polegar. */}
+      {/*
+        Botão fixo: finalizar sempre ao alcance do polegar.
+
+        No celular é uma placa de vidro solta, empilhada acima da barra de
+        navegação; no desktop volta para o fluxo normal da página, sem
+        vidro nem posição fixa.
+      */}
       <div
-        className="fixed inset-x-0 bottom-16 z-40 border-t bg-[var(--surface)] px-4 py-3 md:static md:mt-4 md:border-0 md:bg-transparent md:px-0"
-        style={{ paddingBottom: "calc(0.75rem + env(safe-area-inset-bottom))" }}
+        className="fixed inset-x-0 z-40 px-3 md:static md:mt-4 md:px-0"
+        style={{ bottom: "calc(4.75rem + env(safe-area-inset-bottom))" }}
       >
-        <div className="mx-auto max-w-3xl">
+        <div className="action-bar mx-auto max-w-3xl">
           <Link href="/checkout" className="block">
             <Button
               size="lg"

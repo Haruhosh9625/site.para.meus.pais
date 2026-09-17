@@ -30,11 +30,11 @@ export default function RecuperarSenhaPage() {
     <div className="mx-auto max-w-md px-4 py-10">
       <div className="mb-8 text-center">
         <LogoMark className="mx-auto size-14" />
-        <h1 className="mt-4 text-2xl font-extrabold tracking-tight">Recuperar senha</h1>
+        <h1 className="display mt-5 text-4xl">Recuperar senha</h1>
       </div>
 
       {sent ? (
-        <div className="surface space-y-4 p-6 text-center">
+        <div className="panel space-y-4 p-6 text-center">
           <p className="text-4xl" aria-hidden="true">📬</p>
           <p role="status" className="text-sm">
             Se existir uma conta com <strong>{email}</strong>, enviamos as instruções para redefinir
@@ -45,7 +45,7 @@ export default function RecuperarSenhaPage() {
           </Link>
         </div>
       ) : (
-        <form onSubmit={handleSubmit} className="surface space-y-4 p-6" noValidate>
+        <form onSubmit={handleSubmit} className="panel space-y-4 p-6" noValidate>
           {error && <ErrorState message={error} />}
           <p className="muted text-sm">
             Informe o e-mail da sua conta. Enviaremos um link para você criar uma nova senha.

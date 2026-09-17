@@ -123,7 +123,7 @@ function OrdersList() {
     <div className="space-y-4">
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-extrabold tracking-tight">Pedidos</h1>
+          <h1 className="display text-[clamp(1.9rem,4vw,2.5rem)]">Pedidos</h1>
           <p className="muted text-sm">
             {summary.count} {summary.count === 1 ? "pedido" : "pedidos"} ·{" "}
             {formatCents(summary.revenueCents)} no período
@@ -141,7 +141,7 @@ function OrdersList() {
       </header>
 
       {/* ------------------------------- filtros ---------------------------- */}
-      <section className="surface p-4" aria-label="Filtros">
+      <section className="panel p-4" aria-label="Filtros">
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <div>
             <label htmlFor="f-search" className="mb-1 block text-xs font-semibold">
@@ -255,7 +255,7 @@ function OrdersList() {
               <Link
                 href={`/admin/pedidos/${order.id}`}
                 className={cx(
-                  "surface block p-4 transition-shadow hover:shadow-[var(--shadow-soft)]",
+                  "panel block p-4 transition-shadow hover:shadow-[var(--shadow-soft)]",
                   order.status === "CANCELLED" && "opacity-60",
                 )}
               >

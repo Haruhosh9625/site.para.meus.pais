@@ -190,7 +190,7 @@ export default function PedidoPage({ params }: { params: Promise<{ id: string }>
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="muted text-sm">Pedido</p>
-          <h1 className="text-3xl font-extrabold tracking-tight tabular-nums">
+          <h1 className="display text-[clamp(2.25rem,7vw,3.25rem)] tabular-nums">
             #{String(order.number).padStart(6, "0")}
           </h1>
           <p className="muted mt-1 text-sm">{formatDateTime(order.createdAt)}</p>
@@ -212,7 +212,7 @@ export default function PedidoPage({ params }: { params: Promise<{ id: string }>
 
       {/* ----------------------------- agendamento -------------------------- */}
       {order.scheduledFor && (
-        <section className="surface mb-4 border-brand-300 p-5 dark:border-brand-900/50">
+        <section className="panel mb-4 border-brand-300 p-5 dark:border-brand-900/50">
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div>
               <p className="muted text-xs font-semibold tracking-wide uppercase">
@@ -262,7 +262,7 @@ export default function PedidoPage({ params }: { params: Promise<{ id: string }>
 
       {/* ------------------------------ pagamento --------------------------- */}
       {order.paymentStatus !== "PAID" && order.status !== "CANCELLED" && (
-        <section className="surface mb-4 border-brand-300 p-5 dark:border-brand-900/50">
+        <section className="panel mb-4 border-brand-300 p-5 dark:border-brand-900/50">
           <h2 className="mb-1 font-bold">
             {order.paymentMethod === "PIX"
               ? "Pague com PIX"
@@ -394,7 +394,7 @@ export default function PedidoPage({ params }: { params: Promise<{ id: string }>
       )}
 
       {/* ------------------------------- status ----------------------------- */}
-      <section className="surface mb-4 p-5">
+      <section className="panel mb-4 p-5">
         <h2 className="mb-4 font-bold">Acompanhamento</h2>
         <OrderTimeline
           status={order.status}
@@ -417,7 +417,7 @@ export default function PedidoPage({ params }: { params: Promise<{ id: string }>
       </section>
 
       {/* -------------------------------- itens ----------------------------- */}
-      <section className="surface mb-4 p-5">
+      <section className="panel mb-4 p-5">
         <h2 className="mb-3 font-bold">Itens</h2>
         <ul className="divide-y text-sm">
           {order.items.map((item) => (
@@ -459,7 +459,7 @@ export default function PedidoPage({ params }: { params: Promise<{ id: string }>
       </section>
 
       {/* ------------------------------- entrega ---------------------------- */}
-      <section className="surface mb-4 p-5 text-sm">
+      <section className="panel mb-4 p-5 text-sm">
         <h2 className="mb-3 font-bold">
           {order.deliveryType === "PICKUP" ? "Retirada" : "Entrega"} e contato
         </h2>

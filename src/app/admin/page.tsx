@@ -36,7 +36,7 @@ export default async function AdminDashboardPage() {
     <div className="space-y-6">
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-extrabold tracking-tight">Dashboard</h1>
+          <h1 className="display text-[clamp(1.9rem,4vw,2.5rem)]">Dashboard</h1>
           <p className="muted text-sm">Visão geral da operação de hoje.</p>
         </div>
         <div className="flex items-center gap-2">
@@ -121,7 +121,7 @@ export default async function AdminDashboardPage() {
 
       {/* ------------------------------ gráficos ---------------------------- */}
       <div className="grid gap-4 lg:grid-cols-3">
-        <section className="surface p-5 lg:col-span-2">
+        <section className="panel p-5 lg:col-span-2">
           <h2 className="mb-4 font-bold">Faturamento dos últimos 14 dias</h2>
           <BarChart
             title="Faturamento diário dos últimos 14 dias"
@@ -133,7 +133,7 @@ export default async function AdminDashboardPage() {
           />
         </section>
 
-        <section className="surface p-5">
+        <section className="panel p-5">
           <h2 className="mb-4 font-bold">Por forma de pagamento</h2>
           <p className="muted mb-3 text-xs">Últimos 30 dias</p>
           {paymentTotal > 0 ? (
@@ -153,7 +153,7 @@ export default async function AdminDashboardPage() {
 
       <div className="grid gap-4 lg:grid-cols-2">
         {/* -------------------------- mais vendidos ------------------------- */}
-        <section className="surface p-5">
+        <section className="panel p-5">
           <h2 className="mb-1 font-bold">Produtos mais vendidos</h2>
           <p className="muted mb-4 text-xs">Últimos 30 dias, por quantidade</p>
           <RankingBars
@@ -168,7 +168,7 @@ export default async function AdminDashboardPage() {
         </section>
 
         {/* -------------------------- pedidos recentes ---------------------- */}
-        <section className="surface p-5">
+        <section className="panel p-5">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="font-bold">Últimos pedidos</h2>
             <Link

@@ -43,7 +43,7 @@ function ResetForm() {
 
   if (!token) {
     return (
-      <div className="surface space-y-4 p-6 text-center">
+      <div className="panel space-y-4 p-6 text-center">
         <p className="text-4xl" aria-hidden="true">🔗</p>
         <p className="text-sm">
           Link inválido ou incompleto. Solicite um novo link de redefinição.
@@ -56,7 +56,7 @@ function ResetForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="surface space-y-4 p-6" noValidate>
+    <form onSubmit={handleSubmit} className="panel space-y-4 p-6" noValidate>
       {error && <ErrorState message={error} />}
       <Field label="Nova senha" required hint="Mínimo de 8 caracteres, com letras e números."
         error={fieldErrors.password}>
@@ -89,9 +89,9 @@ export default function RedefinirSenhaPage() {
     <div className="mx-auto max-w-md px-4 py-10">
       <div className="mb-8 text-center">
         <LogoMark className="mx-auto size-14" />
-        <h1 className="mt-4 text-2xl font-extrabold tracking-tight">Criar nova senha</h1>
+        <h1 className="display mt-5 text-4xl">Criar nova senha</h1>
       </div>
-      <Suspense fallback={<div className="surface p-6">Carregando...</div>}>
+      <Suspense fallback={<div className="panel p-6">Carregando...</div>}>
         <ResetForm />
       </Suspense>
     </div>

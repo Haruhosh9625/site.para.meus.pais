@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Logo } from "./logo";
 import { useCart, useSession, useStoreSettings } from "@/components/providers";
 import { Badge, Button } from "@/components/ui";
@@ -77,11 +77,32 @@ export function ClosedBanner() {
 
 /* --------------------------------- header --------------------------------- */
 
+/**
+ * Quantos pixels de rolagem já passaram do limite.
+ *
+ * A barra no topo muda de peso quando a página sai do começo: em repouso é
+ * quase invisível, rolando fica com mais corpo e sombra. Um detalhe pequeno
+ * que o olho lê como "isto flutua acima do conteúdo".
+ */
+function useScrolled(limite = 12) {
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    const aoRolar = () => setScrolled(window.scrollY > limite);
+    aoRolar();
+    window.addEventListener("scroll", aoRolar, { passive: true });
+    return () => window.removeEventListener("scroll", aoRolar);
+  }, [limite]);
+
+  return scrolled;
+}
+
 export function SiteHeader() {
   const { user, logout } = useSession();
   const { itemCount } = useCart();
   const [menuOpen, setMenuOpen] = useState(false);
   const pathname = usePathname();
+  const scrolled = useScrolled();
 
   const links = [
     { href: "/", label: "Início" },
@@ -92,8 +113,20 @@ export function SiteHeader() {
   return (
     <>
       <ClosedBanner />
-      <header className="sticky top-0 z-40 border-b bg-[var(--surface)]/95 backdrop-blur">
-        <div className="mx-auto flex h-16 max-w-6xl items-center gap-3 px-4">
+      {/*
+        A barra não encosta no topo: fica solta, como uma peça de vidro
+        apoiada sobre a página. O conteúdo passa por baixo dela — é daí que
+        vem a sensação de profundidade. O espaço que ela ocupa é reservado
+        pelo padding do <main> em app/(site)/layout.tsx.
+      */}
+      <header className="pointer-events-none fixed inset-x-0 top-0 z-40 px-3 pt-3 sm:px-4 sm:pt-4">
+        <div
+          className={cx(
+            "glass glass-sheen pointer-events-auto mx-auto flex h-15 max-w-6xl items-center gap-3 px-3 sm:px-4",
+            "transition-[background-color,box-shadow,border-color] duration-300",
+            scrolled ? "glass-strong shadow-[var(--shadow-float)]" : "",
+          )}
+        >
           <Logo compact />
 
           <nav aria-label="Navegação principal" className="ml-4 hidden items-center gap-1 md:flex">
@@ -103,13 +136,20 @@ export function SiteHeader() {
                 href={link.href}
                 aria-current={pathname === link.href ? "page" : undefined}
                 className={cx(
-                  "rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                  "relative rounded-xl px-3 py-2 text-sm font-semibold transition-colors",
                   pathname === link.href
-                    ? "bg-brand-50 text-brand-700 dark:bg-brand-900/30 dark:text-brand-200"
-                    : "hover:bg-[var(--surface-sunken)]",
+                    ? "text-brand"
+                    : "text-[var(--text-muted)] hover:text-[var(--text)]",
                 )}
               >
                 {link.label}
+                {/* Sublinhado curto no item ativo: mais leve que uma pílula. */}
+                {pathname === link.href && (
+                  <span
+                    aria-hidden="true"
+                    className="absolute inset-x-3 -bottom-0.5 h-0.5 rounded-full bg-brand-500"
+                  />
+                )}
               </Link>
             ))}
           </nav>
@@ -180,8 +220,17 @@ export function SiteHeader() {
           </div>
         </div>
 
+        {/*
+          O painel do menu é irmão da pílula, não filho: assim ele desce
+          como uma segunda placa de vidro em vez de esticar a barra. Precisa
+          de `pointer-events-auto` porque o <header> inteiro é
+          `pointer-events-none` — só as peças reais capturam o toque.
+        */}
         {menuOpen && (
-          <div id="menu-mobile" className="fade-in border-t bg-[var(--surface)] px-4 py-3 md:hidden">
+          <div
+            id="menu-mobile"
+            className="glass glass-strong fade-in pointer-events-auto mx-auto mt-2 max-w-6xl px-4 py-3 shadow-[var(--shadow-float)] md:hidden"
+          >
             <div className="mb-3 sm:hidden">
               <StoreStatusPill />
             </div>
@@ -264,10 +313,10 @@ export function BottomNav() {
   return (
     <nav
       aria-label="Navegação rápida"
-      className="fixed inset-x-0 bottom-0 z-40 border-t bg-[var(--surface)]/98 backdrop-blur md:hidden"
-      style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+      className="fixed inset-x-0 bottom-0 z-40 px-3 pb-3 md:hidden"
+      style={{ paddingBottom: "calc(0.75rem + env(safe-area-inset-bottom))" }}
     >
-      <ul className="mx-auto flex max-w-lg">
+      <ul className="glass glass-strong mx-auto flex max-w-lg shadow-[var(--shadow-float)]">
         {items.map((item) => {
           const active = pathname === item.href;
           return (
@@ -276,10 +325,18 @@ export function BottomNav() {
                 href={item.href}
                 aria-current={active ? "page" : undefined}
                 className={cx(
-                  "relative flex flex-col items-center gap-1 py-2.5 text-[11px] font-medium transition-colors",
+                  "relative flex flex-col items-center gap-1 rounded-[calc(var(--radius-glass)-4px)] py-2.5",
+                  "text-[11px] font-semibold transition-colors",
                   active ? "text-brand" : "text-[var(--text-muted)]",
                 )}
               >
+                {/* Marca do item ativo: um risco de luz no alto do item. */}
+                {active && (
+                  <span
+                    aria-hidden="true"
+                    className="absolute inset-x-5 top-0 h-0.5 rounded-full bg-brand-500"
+                  />
+                )}
                 <span className="relative">
                   <Icon path={item.icon} className="size-6" />
                   {"badge" in item && (item.badge ?? 0) > 0 && (
@@ -309,12 +366,19 @@ export function SiteFooter() {
   // rolar acima das duas barras fixas: a navegação inferior (~64px) e a
   // barra de ação de carrinho/checkout (~76px). Sem esta folga (pb-40), a
   // última linha do rodapé ficaria eternamente escondida atrás delas.
+  // O rodapé é escuro nos dois temas, fechando a página com o mesmo
+  // material do herói: a leitura de cima a baixo vira brasa → conteúdo →
+  // brasa, e não uma pilha de caixas brancas.
+  //
+  // Sem margem no topo, de propósito: a faixa clara que aparecia entre a
+  // chamada final (escura) e o rodapé (escuro) cortava a página em duas.
+  // O próprio fundo escuro do rodapé já faz a separação.
   return (
-    <footer className="mt-16 border-t bg-[var(--surface)] pb-40 md:pb-0">
-      <div className="mx-auto grid max-w-6xl gap-8 px-4 py-10 sm:grid-cols-2 lg:grid-cols-3">
+    <footer className="mesh relative overflow-hidden pb-40 md:pb-0">
+      <div className="relative z-1 mx-auto grid max-w-6xl gap-10 px-4 py-14 sm:grid-cols-2 lg:grid-cols-3">
         <div>
           <Logo />
-          <p className="muted mt-3 max-w-xs text-sm">
+          <p className="mt-4 max-w-xs text-sm leading-relaxed text-coal-300">
             Espetos na brasa, refrigerante gelado e o nosso Completo. Peça pelo site
             {settings?.allowDelivery
               ? " e retire ou receba em casa."
@@ -323,14 +387,20 @@ export function SiteFooter() {
         </div>
 
         <div>
-          <h2 className="mb-3 text-sm font-semibold tracking-wide uppercase">Horários</h2>
-          <ul className="muted space-y-1 text-sm">
+          <h2 className="eyebrow mb-4 text-brand-400">Horários</h2>
+          <ul className="space-y-1.5 text-sm text-coal-300">
             {settings?.openingHours.map((hour) => (
               <li key={hour.weekday} className="flex justify-between gap-4">
                 <span>
                   {["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"][hour.weekday]}
                 </span>
-                <span>{hour.closed ? "Fechado" : `${hour.open} - ${hour.close}`}</span>
+                <span
+                  className={
+                    hour.closed ? "text-coal-500" : "font-semibold tabular-nums text-coal-100"
+                  }
+                >
+                  {hour.closed ? "Fechado" : `${hour.open} - ${hour.close}`}
+                </span>
               </li>
             ))}
           </ul>
@@ -338,8 +408,8 @@ export function SiteFooter() {
 
         {/* Só aparece quando o administrador já preencheu algum contato. */}
         <div hidden={!hasContact}>
-          <h2 className="mb-3 text-sm font-semibold tracking-wide uppercase">Contato</h2>
-          <ul className="muted space-y-2 text-sm">
+          <h2 className="eyebrow mb-4 text-brand-400">Contato</h2>
+          <ul className="space-y-2.5 text-sm text-coal-300">
             {settings?.phone && (
               <li>
                 Telefone:{" "}
@@ -372,7 +442,9 @@ export function SiteFooter() {
         </div>
       </div>
 
-      <div className="muted border-t px-4 py-5 text-center text-xs">
+      {/* coal-300 pelo mesmo motivo do rótulo no herói: em coal-400 este
+          texto de 12px ficava em 4,4:1 sobre a malha. */}
+      <div className="relative z-1 border-t border-white/10 px-4 py-6 text-center text-xs text-coal-300">
         © {year} {settings?.storeName ?? "DS Espetos"}. Todos os direitos reservados.
       </div>
     </footer>

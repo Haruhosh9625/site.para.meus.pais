@@ -47,11 +47,11 @@ function LoginForm() {
     <div className="mx-auto flex max-w-md flex-col px-4 py-10">
       <div className="mb-8 text-center">
         <LogoMark className="mx-auto size-14" />
-        <h1 className="mt-4 text-2xl font-extrabold tracking-tight">Entrar na sua conta</h1>
+        <h1 className="display mt-5 text-4xl">Entrar na sua conta</h1>
         <p className="muted mt-1 text-sm">Acompanhe seus pedidos e peça mais rápido.</p>
       </div>
 
-      <form onSubmit={handleSubmit} className="surface space-y-4 p-6" noValidate>
+      <form onSubmit={handleSubmit} className="panel space-y-4 p-6" noValidate>
         {error && <ErrorState message={error} />}
 
         <Field label="E-mail" required error={fieldErrors.email}>

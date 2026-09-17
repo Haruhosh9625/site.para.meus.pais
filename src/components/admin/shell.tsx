@@ -60,7 +60,7 @@ export function AdminShell({ userName, children }: { userName: string; children:
           className={cx(
             "tap flex items-center gap-3 rounded-xl px-3 text-sm font-medium transition-colors",
             isActive(item.href)
-              ? "bg-brand-500 text-coal-900"
+              ? "bg-linear-to-b from-brand-400 to-brand-500 text-coal-900 shadow-[inset_0_1px_0_0_rgb(255_255_255/0.4)]"
               : "hover:bg-[var(--surface-sunken)]",
           )}
         >
@@ -72,9 +72,14 @@ export function AdminShell({ userName, children }: { userName: string; children:
   );
 
   return (
-    <div className="flex min-h-dvh flex-col bg-[var(--surface-muted)] lg:flex-row">
+    <div className="wash flex min-h-dvh flex-col bg-[var(--surface-muted)] lg:flex-row">
       {/* --------------------------- barra lateral --------------------------- */}
-      <aside className="hidden w-64 shrink-0 border-r bg-[var(--surface)] p-4 lg:flex lg:flex-col">
+      {/*
+        A lateral é vidro, e não uma coluna branca: assim a lavagem de
+        gradiente do fundo atravessa a barra e o painel deixa de parecer
+        dois retângulos colados.
+      */}
+      <aside className="glass glass-strong sticky top-0 hidden h-dvh w-64 shrink-0 !rounded-none border-y-0 border-l-0 p-4 lg:flex lg:flex-col">
         <Link href="/admin" className="mb-6 flex items-center gap-2.5">
           <LogoMark className="size-9" />
           <span>
@@ -101,7 +106,7 @@ export function AdminShell({ userName, children }: { userName: string; children:
       </aside>
 
       {/* ------------------------- cabeçalho mobile -------------------------- */}
-      <header className="sticky top-0 z-40 flex h-14 items-center gap-3 border-b bg-[var(--surface)] px-4 lg:hidden">
+      <header className="glass glass-strong sticky top-0 z-40 flex h-14 items-center gap-3 !rounded-none border-x-0 border-t-0 px-4 lg:hidden">
         <button
           type="button"
           onClick={() => setOpen((value) => !value)}
@@ -125,7 +130,7 @@ export function AdminShell({ userName, children }: { userName: string; children:
       </header>
 
       {open && (
-        <div id="admin-menu" className="fade-in border-b bg-[var(--surface)] p-4 lg:hidden">
+        <div id="admin-menu" className="glass glass-strong fade-in !rounded-none border-x-0 border-t-0 p-4 lg:hidden">
           {navigation}
           <div className="mt-4 border-t pt-4">
             <Button variant="ghost" size="sm" fullWidth onClick={() => void logout()}>

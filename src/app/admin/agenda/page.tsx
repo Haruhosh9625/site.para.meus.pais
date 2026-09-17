@@ -56,7 +56,7 @@ export default async function AdminAgendaPage({
 
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-extrabold tracking-tight">Agenda</h1>
+          <h1 className="display text-[clamp(1.9rem,4vw,2.5rem)]">Agenda</h1>
           <p className="muted text-sm">
             {isToday ? "Hoje, " : ""}
             {WEEKDAY_LABEL[day.getDay()]} ·{" "}
@@ -94,7 +94,7 @@ export default async function AdminAgendaPage({
           { label: "Itens no dia", value: `${totalItems} un.` },
           { label: "Valor agendado", value: formatCents(totalCents) },
         ].map((stat) => (
-          <div key={stat.label} className="surface p-4">
+          <div key={stat.label} className="panel p-4">
             <dt className="muted text-xs font-semibold tracking-wide uppercase">{stat.label}</dt>
             <dd className="mt-1 text-2xl font-extrabold tabular-nums">{stat.value}</dd>
           </div>
@@ -117,7 +117,7 @@ export default async function AdminAgendaPage({
             );
 
             return (
-              <li key={window.start.toISOString()} className="surface overflow-hidden">
+              <li key={window.start.toISOString()} className="panel overflow-hidden">
                 <div
                   className={cx(
                     "flex flex-wrap items-center justify-between gap-3 border-b px-5 py-3",

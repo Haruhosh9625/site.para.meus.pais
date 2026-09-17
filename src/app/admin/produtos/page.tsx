@@ -213,7 +213,7 @@ export default function AdminProductsPage() {
     <div className="space-y-4">
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-extrabold tracking-tight">Cardápio</h1>
+          <h1 className="display text-[clamp(1.9rem,4vw,2.5rem)]">Cardápio</h1>
           <p className="muted text-sm">
             {products.filter((p) => p.active).length} produtos ativos ·{" "}
             {products.filter((p) => p.active && !p.available).length} indisponíveis
@@ -226,7 +226,7 @@ export default function AdminProductsPage() {
 
       {/* -------------------------------- formulário ------------------------ */}
       {(creating || editing) && (
-        <form onSubmit={save} className="surface space-y-4 p-5" noValidate>
+        <form onSubmit={save} className="panel space-y-4 p-5" noValidate>
           <h2 className="font-bold">{editing ? `Editar: ${editing.name}` : "Novo produto"}</h2>
           {formError && <ErrorState message={formError} />}
 
@@ -339,7 +339,7 @@ export default function AdminProductsPage() {
           {products.map((product) => (
             <li
               key={product.id}
-              className={cx("surface flex flex-wrap items-center gap-4 p-4", !product.active && "opacity-55")}
+              className={cx("panel flex flex-wrap items-center gap-4 p-4", !product.active && "opacity-55")}
             >
               <div className="relative size-16 shrink-0 overflow-hidden rounded-xl bg-[var(--surface-sunken)]">
                 {product.imageUrl ? (

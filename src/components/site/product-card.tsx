@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { useEffect, useRef, useState } from "react";
 import { useCart, useToast } from "@/components/providers";
 import { formatCents } from "@/lib/money";
 import { Button } from "@/components/ui";
@@ -67,16 +68,62 @@ export function QuantityStepper({
   );
 }
 
-export function ProductCard({ product }: { product: MenuProduct }) {
-  const { quantityOf, add, setQuantity } = useCart();
+/**
+ * Botão que confirma o próprio toque.
+ *
+ * Por um instante ele vira "Adicionado ✓" antes de dar lugar ao controle de
+ * quantidade. Sem isso, apertar "Adicionar" troca o botão por −/1/+ de
+ * repente e a pessoa fica sem saber se foi ela que mudou a tela ou se errou
+ * o toque. O aviso no rodapé some depois de alguns segundos; esta confirmação
+ * nasce debaixo do dedo, onde o olho já estava.
+ */
+function BotaoAdicionar({ product }: { product: MenuProduct }) {
+  const { add } = useCart();
   const { push } = useToast();
+  const [confirmado, setConfirmado] = useState(false);
+  const relogioRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (relogioRef.current) clearTimeout(relogioRef.current);
+    };
+  }, []);
+
+  return (
+    <Button
+      size="sm"
+      className={cx("sm:w-full", confirmado && "pointer-events-none")}
+      onClick={() => {
+        setConfirmado(true);
+        push(`${product.name} adicionado ao carrinho`, "success");
+        // O item entra no carrinho depois do quadro de confirmação: assim o
+        // botão mostra "Adicionado" antes de ser substituído pelo −/1/+.
+        relogioRef.current = setTimeout(() => add(product.id, 1), 480);
+      }}
+    >
+      <span
+        className={cx(
+          "inline-flex items-center gap-1.5 transition-all duration-200",
+          confirmado ? "scale-105" : "",
+        )}
+      >
+        {confirmado ? "Adicionado ✓" : "Adicionar"}
+      </span>
+    </Button>
+  );
+}
+
+export function ProductCard({ product }: { product: MenuProduct }) {
+  const { quantityOf, setQuantity } = useCart();
   const quantity = quantityOf(product.id);
   const unavailable = !product.available;
 
   return (
     <article
+      data-spotlight
+      data-tilt="3.5"
       className={cx(
-        "panel reveal group relative flex gap-3 overflow-hidden p-3",
+        "panel spotlight tilt reveal group relative flex gap-3 overflow-hidden p-3",
         "sm:flex-col sm:gap-0 sm:p-0",
         unavailable ? "opacity-60" : "lift",
       )}
@@ -146,16 +193,7 @@ export function ProductCard({ product }: { product: MenuProduct }) {
               onChange={(next) => setQuantity(product.id, next)}
             />
           ) : (
-            <Button
-              size="sm"
-              className="sm:w-full"
-              onClick={() => {
-                add(product.id, 1);
-                push(`${product.name} adicionado ao carrinho`, "success");
-              }}
-            >
-              Adicionar
-            </Button>
+            <BotaoAdicionar product={product} />
           )}
         </div>
       </div>

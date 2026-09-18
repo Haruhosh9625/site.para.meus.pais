@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Anton, Archivo } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/providers";
-import { Reveal } from "@/components/site/reveal";
+import { Motion } from "@/components/site/motion";
 import { getPublicSettings, type PublicSettings } from "@/server/services/settings";
 import { logger } from "@/server/logger";
 
@@ -90,7 +90,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         >
           Pular para o conteúdo
         </a>
-        <Reveal />
+        <Motion />
         <Providers initialSettings={settings}>{children}</Providers>
       </body>
     </html>

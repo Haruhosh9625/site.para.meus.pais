@@ -37,8 +37,14 @@ painel administrativo. Pensado primeiro para o celular.
 
 - Página inicial com estado aberto/fechado em tempo real.
 - Cardápio com foto, descrição, preço e controle `+` / `−` por item.
+- **Gaveta do carrinho**: abre por cima do cardápio, confere e ajusta o
+  pedido sem sair da página. Fecha no Esc ou clicando fora, devolve o foco
+  ao botão que a abriu, e os valores são os mesmos de `/api/cart/quote`.
 - Carrinho com preço unitário e subtotal por linha, taxa de entrega,
   desconto e total — **tudo recalculado no servidor**.
+- **Perguntas frequentes** montadas a partir das configurações reais
+  (horário, formas de pagamento, regras de agendamento, endereço): mexer no
+  painel muda a resposta na hora, sem texto inventado no código.
 - Cadastro, login, logout, recuperação e troca de senha — pelo
   **Supabase Auth**, com a senha fora deste banco.
 - Endereços salvos, edição de dados pessoais, histórico de pedidos.
@@ -100,7 +106,9 @@ desempenho:
 promover a peça a uma camada de composição própria e refazer o desfoque a
 cada quadro de rolagem. Uma barra fixa faz isso bem; vinte cartões de
 cardápio fazem o celular de entrada engasgar. Medido nesta página: 13
-camadas de desfoque simultâneas antes da separação, 6 depois.
+camadas de desfoque simultâneas antes da separação, 6 depois — e 2 fora do
+herói, depois que as pastilhas de preço (uma por cartão) também deixaram o
+desfoque de lado.
 
 **Vidro só parece vidro quando há algo atrás para refratar.** Sobre branco
 chapado, `backdrop-filter` não produz nada visível. Por isso toda tela do
@@ -121,6 +129,47 @@ rótulo em 3,5:1 no herói, que foi corrigido para 5,8:1.
 **Imagem de compartilhamento.** `src/app/opengraph-image.tsx` desenha em
 código a figura que aparece quando o link vai para o WhatsApp. Sai do banco
 (nome da loja, modo de retirada), então nunca fica desatualizada.
+
+### Movimento
+
+Tudo que se move vive em dois lugares: as regras em `globals.css` (bloco
+`MOVIMENTO`) e os quatro comportamentos de `components/site/motion.tsx`
+(entrada por scroll, brilho do cursor, inclinação 3D e barra de progresso).
+Ficam juntos de propósito: cada `pointermove` e cada `scroll` escreve no DOM
+uma vez por quadro, dentro de um `requestAnimationFrame` só.
+
+| Peça                       | O que faz                                                           |
+| -------------------------- | ------------------------------------------------------------------- |
+| `.reveal`                  | Entra deslizando quando alcança a tela, em cascata dentro do grupo   |
+| `.spotlight` / `[data-spotlight]` | Clarão que acompanha o cursor sobre a peça                   |
+| `.tilt` / `[data-tilt]`    | Inclinação em perspectiva; a força vem do próprio atributo           |
+| `.fagulha`                 | Brasa subindo no herói — 12 pontos com ritmo próprio cada            |
+| `.scroll-progress`         | Fio de progresso no topo, alimentado pela variável `--progresso`     |
+| `.sanfona`                 | Perguntas frequentes com altura animada de verdade                   |
+| `.gaveta`                  | Carrinho deslizando pela direita, com foco preso e Esc para fechar   |
+| `.pulo`                    | O selo do carrinho salta quando a quantidade muda                    |
+
+**Uma propriedade para cada efeito.** `.reveal` escreve em `translate`,
+`.lift` em `translate`, `.tilt` em `transform`. Não é preciosismo: os três
+podem cair no mesmo elemento, e enquanto todos usavam `transform` o último
+da cascata apagava os outros — `.reveal.is-in` (0-2-0) vencia `.tilt`
+(0-1-0) e as molduras do herói não se mexiam, embora o JavaScript estivesse
+escrevendo `--rx`/`--ry` corretamente. `translate` e `rotate` são
+propriedades independentes e compõem com `transform`.
+
+**Números que contam.** `components/site/numbers.tsx` tem três peças:
+`ValorAnimado` (dinheiro que anda até o valor novo), `NumeroNaTela`
+(estatística que sobe de zero quando a faixa aparece) e `Pulo`. Nenhuma
+delas calcula nada: o valor é sempre o que o servidor mandou, e a animação
+só percorre o caminho até ele. O HTML do servidor já traz o número cheio —
+quem está sem JavaScript, quem usa leitor de tela e o robô de busca leem o
+valor certo, nunca um zero.
+
+**Nada disso é obrigatório.** Com `prefers-reduced-motion: reduce` as
+fagulhas param, a inclinação desliga, a gaveta abre sem deslizar, a entrada
+por scroll não acontece e os números aparecem prontos. O brilho e a
+inclinação também só ligam em ponteiro fino com hover — num celular
+disparariam no toque e a peça ficaria torta depois de o dedo sair.
 
 ---
 

@@ -370,6 +370,49 @@ export function useCart(): CartContextValue {
 }
 
 /* ==========================================================================
+   Gaveta do carrinho
+
+   Só o estado aberto/fechado vive aqui. A gaveta em si é
+   components/site/cart-drawer.tsx — se o contexto morasse lá, providers
+   importaria cart-drawer e cart-drawer importaria providers, e o ciclo
+   quebraria o build.
+   ========================================================================== */
+
+const CartDrawerContext = createContext<{
+  open: boolean;
+  openDrawer: () => void;
+  closeDrawer: () => void;
+}>({ open: false, openDrawer: () => undefined, closeDrawer: () => undefined });
+
+function CartDrawerProvider({ children }: { children: ReactNode }) {
+  const [open, setOpen] = useState(false);
+
+  const openDrawer = useCallback(() => setOpen(true), []);
+  const closeDrawer = useCallback(() => setOpen(false), []);
+
+  /*
+    Enquanto a gaveta está aberta, a página atrás não rola. Sem isto, no
+    celular o dedo arrastando dentro da gaveta leva o fundo embora e a pessoa
+    fecha a gaveta num lugar diferente de onde estava.
+  */
+  useEffect(() => {
+    if (!open) return;
+    const anterior = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = anterior;
+    };
+  }, [open]);
+
+  const value = useMemo(() => ({ open, openDrawer, closeDrawer }), [open, openDrawer, closeDrawer]);
+  return <CartDrawerContext.Provider value={value}>{children}</CartDrawerContext.Provider>;
+}
+
+export function useCartDrawer() {
+  return useContext(CartDrawerContext);
+}
+
+/* ==========================================================================
    Avisos (toasts)
    ========================================================================== */
 
@@ -439,7 +482,9 @@ export function Providers({
     <ToastProvider>
       <SessionProvider>
         <StoreSettingsProvider initialSettings={initialSettings}>
-          <CartProvider>{children}</CartProvider>
+          <CartProvider>
+            <CartDrawerProvider>{children}</CartDrawerProvider>
+          </CartProvider>
         </StoreSettingsProvider>
       </SessionProvider>
     </ToastProvider>

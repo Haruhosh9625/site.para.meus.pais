@@ -1,3 +1,4 @@
+import { CartDrawer } from "@/components/site/cart-drawer";
 import { BottomNav, SiteFooter, SiteHeader } from "@/components/site/navigation";
 
 /**
@@ -24,6 +25,7 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
       </main>
       <SiteFooter />
       <BottomNav />
+      <CartDrawer />
     </div>
   );
 }

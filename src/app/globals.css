@@ -348,12 +348,21 @@
     pastilha some no fundo e o preço perde o destaque. Aqui o vidro é
     fumê e o texto, claro.
   */
+  /*
+    Pastilha escura de preço, sem desfoque de verdade — e é de propósito.
+
+    Ela mora sempre sobre a foto do produto, que é uma imagem parada: o
+    desfoque não revela movimento nenhum, e o olho não distingue a pastilha
+    desfocada da translúcida. O custo, sim, se distingue: são uma por
+    cartão. Medido na home, as sete pastilhas de preço respondiam por sete
+    das nove camadas de composição simultâneas; sem elas, a home fica em
+    duas. É a mesma decisão de `.panel` contra `.glass`, aplicada a uma
+    peça que se repete.
+  */
   .glass-pill-dark {
     border-radius: 999px;
     color: #fff;
-    background-color: rgb(10 10 13 / 0.55);
-    -webkit-backdrop-filter: blur(14px) saturate(160%);
-    backdrop-filter: blur(14px) saturate(160%);
+    background-color: rgb(10 10 13 / 0.72);
     border: 1px solid rgb(255 255 255 / 0.18);
     box-shadow: inset 0 1px 0 0 rgb(255 255 255 / 0.22);
   }
@@ -361,8 +370,6 @@
   @media (prefers-reduced-transparency: reduce) {
     .glass-pill-dark {
       background-color: rgb(10 10 13 / 0.92) !important;
-      -webkit-backdrop-filter: none !important;
-      backdrop-filter: none !important;
     }
   }
 
@@ -516,6 +523,13 @@
   /*
     Lavagem quente para as seções claras. Sem ela o vidro no tema claro
     não teria o que desfocar e pareceria só um cartão translúcido.
+
+    USE SOMENTE EM ELEMENTO DE LARGURA TOTAL — hoje, o <main> das telas do
+    cliente e o invólucro do painel. O gradiente é pintado no próprio
+    elemento, então numa seção centrada com `max-w-*` ele desenha um
+    retângulo de borda visível no meio da página. Duas seções da home
+    tinham `wash` junto com `mx-auto max-w-3xl`: no tema escuro dava para
+    ver o retângulo mais claro atrás das perguntas frequentes.
   */
   .wash {
     position: relative;
@@ -614,18 +628,32 @@
     Entrada por scroll. O estado inicial só é aplicado quando o JavaScript
     marca `data-reveal-ready` no documento — sem isso, quem estiver com o
     script bloqueado veria a página em branco para sempre.
+
+    POR QUE `translate` E NÃO `transform`
+
+    Três efeitos podem cair no mesmo elemento: a entrada por scroll, o
+    `.lift` do hover e a inclinação 3D do `.tilt`. Se todos escrevessem em
+    `transform`, o último da cascata apagaria os outros — e foi exatamente
+    o que aconteceu aqui: `.reveal.is-in` (0-2-0) vencia `.tilt` (0-1-0) e
+    zerava a inclinação, então as molduras do herói nunca se mexiam,
+    embora o JavaScript estivesse escrevendo --rx/--ry corretamente.
+
+    A correção é dar a cada efeito a sua propriedade. `translate` e
+    `rotate` são propriedades independentes de `transform` e compõem com
+    ela; assim a entrada desliza, o hover levanta e o cursor inclina, os
+    três ao mesmo tempo, sem ninguém pisar em ninguém.
   */
   [data-reveal-ready] .reveal {
     opacity: 0;
-    transform: translateY(18px);
+    translate: 0 18px;
   }
 
   [data-reveal-ready] .reveal.is-in {
     opacity: 1;
-    transform: none;
+    translate: 0 0;
     transition:
       opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1),
-      transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+      translate 0.7s cubic-bezier(0.22, 1, 0.36, 1);
   }
 
   /*
@@ -659,26 +687,313 @@
     }
   }
 
-  /* Sobe um pouco ao passar o dedo/mouse. */
+  /* ========================================================================
+     INTERAÇÃO — o que responde ao ponteiro
+
+     Tudo aqui é opcional por natureza: são afordâncias de mouse. Em tela de
+     toque e para quem pediu menos animação, o componente em
+     components/site/motion.tsx simplesmente não liga os listeners, e estas
+     regras ficam inertes porque as variáveis nunca são escritas.
+     ======================================================================== */
+
+  /*
+    Brilho que acompanha o cursor.
+
+    É o gesto que mais vende "vidro": a luz não fica parada na peça, ela
+    segue a mão. As coordenadas chegam em `--mx`/`--my` (em porcentagem) e
+    `--spot` liga/desliga a opacidade, para a entrada e a saída serem
+    suaves em vez de um pisca-pisca.
+  */
+  .spotlight {
+    position: relative;
+    isolation: isolate;
+  }
+
+  .spotlight::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    pointer-events: none;
+    opacity: var(--spot, 0);
+    transition: opacity 0.35s ease;
+    background: radial-gradient(
+      18rem circle at var(--mx, 50%) var(--my, 50%),
+      rgb(245 179 1 / 0.22),
+      transparent 60%
+    );
+  }
+
+  /* Sobre fundo escuro o brilho é mais quente e um pouco mais forte. */
+  .spotlight-dark::before {
+    background: radial-gradient(
+      20rem circle at var(--mx, 50%) var(--my, 50%),
+      rgb(249 115 22 / 0.3),
+      transparent 62%
+    );
+  }
+
+  /*
+    Inclinação em perspectiva.
+
+    O ângulo vem de `--rx`/`--ry`, escritos pelo ponteiro. `translateZ`
+    força a peça para uma camada própria e evita o texto tremer durante a
+    rotação.
+  */
+  .tilt {
+    /*
+      `--py` entra na MESMA declaração de transform que a rotação. Se a
+      paralaxe viesse de uma segunda regra, uma sobrescreveria a outra —
+      `transform` não acumula.
+
+      A paralaxe sai de `--progresso`, a mesma variável da barra de
+      rolagem: movimento ligado ao scroll sem uma linha de JavaScript
+      extra, e sem listener nenhum.
+    */
+    transform: perspective(1000px) translate3d(0, var(--py, 0px), 0)
+      rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg));
+    transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+    transform-style: preserve-3d;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .tilt {
+      --py: 0px;
+    }
+  }
+
+  /*
+    Barra de progresso da rolagem: um fio de luz no topo da janela.
+    `scaleX` em vez de `width` porque escala é composta na GPU e não
+    dispara recálculo de layout a cada quadro.
+  */
+  .scroll-progress {
+    position: fixed;
+    inset: 0 0 auto 0;
+    height: 2px;
+    z-index: 60;
+    transform-origin: 0 50%;
+    transform: scaleX(var(--progresso, 0));
+    background: linear-gradient(
+      90deg,
+      var(--color-brand-600),
+      var(--color-brand-400),
+      var(--color-ember-400)
+    );
+    pointer-events: none;
+  }
+
+  /*
+    Fagulha da brasa. Sobe, oscila de lado e apaga. Cada peça recebe o
+    próprio atraso e a própria duração por variável, então três elementos
+    iguais no HTML já parecem um enxame.
+  */
+  .fagulha {
+    position: absolute;
+    bottom: -1rem;
+    width: var(--tamanho, 3px);
+    height: var(--tamanho, 3px);
+    border-radius: 999px;
+    background: var(--color-brand-300);
+    box-shadow: 0 0 6px 1px rgb(249 115 22 / 0.7);
+    opacity: 0;
+    animation: fagulha var(--duracao, 7s) linear var(--atraso, 0s) infinite;
+    will-change: transform, opacity;
+  }
+
+  @keyframes fagulha {
+    0% {
+      opacity: 0;
+      transform: translate3d(0, 0, 0) scale(0.6);
+    }
+    12% {
+      opacity: 1;
+    }
+    70% {
+      opacity: 0.8;
+    }
+    100% {
+      opacity: 0;
+      transform: translate3d(var(--deriva, 30px), -28rem, 0) scale(1.1);
+    }
+  }
+
+  /*
+    Troca de página. O conteúdo novo entra com um deslize curtíssimo — o
+    suficiente para o olho perceber que mudou de tela, sem atrasar quem
+    está com pressa.
+  */
+  .page-enter {
+    animation: pageEnter 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  @keyframes pageEnter {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+  }
+
+  /*
+    Sanfona com altura animada de verdade.
+
+    `interpolate-size: allow-keywords` é o que permite animar de 0 até
+    `auto` sem medir nada em JavaScript. Onde o navegador não suporta, o
+    conteúdo simplesmente aparece e desaparece — sem quebrar.
+  */
+  @supports (interpolate-size: allow-keywords) {
+    :root {
+      interpolate-size: allow-keywords;
+    }
+
+    .sanfona-corpo {
+      height: 0;
+      overflow: hidden;
+      transition:
+        height 0.4s cubic-bezier(0.22, 1, 0.36, 1),
+        opacity 0.3s ease;
+      opacity: 0;
+    }
+
+    .sanfona[data-aberta="true"] .sanfona-corpo {
+      height: auto;
+      opacity: 1;
+    }
+  }
+
+  @supports not (interpolate-size: allow-keywords) {
+    .sanfona-corpo {
+      display: none;
+    }
+
+    .sanfona[data-aberta="true"] .sanfona-corpo {
+      display: block;
+    }
+  }
+
+  /*
+    Gaveta: desliza pela borda direita.
+
+    É transição, não animação de entrada, porque a gaveta fica montada o
+    tempo todo — assim ela sai deslizando ao fechar, e não desaparece de
+    uma vez. O painel também não pode ficar acessível ao teclado enquanto
+    está fora da tela: `visibility` resolve isso, e entra na transição com
+    atraso para não cortar o deslizamento de saída no meio.
+  */
+  .gaveta {
+    transform: translateX(100%);
+    transition:
+      transform 0.36s cubic-bezier(0.22, 1, 0.36, 1),
+      visibility 0s linear 0.36s;
+    visibility: hidden;
+    will-change: transform;
+  }
+
+  .gaveta[data-aberta="true"] {
+    transform: translateX(0);
+    visibility: visible;
+    transition:
+      transform 0.36s cubic-bezier(0.22, 1, 0.36, 1),
+      visibility 0s;
+  }
+
+  /*
+    O véu carrega `backdrop-filter`, e um `backdrop-filter` vale uma camada
+    de composição própria — o navegador refaz o desfoque a cada quadro de
+    rolagem. Fechado, ele não pode custar nada: `visibility: hidden` tira a
+    camada do caminho, enquanto só `opacity: 0` a deixaria viva atrás da
+    página inteira. Medido: com o véu só transparente, a home marcava 10
+    camadas de desfoque simultâneas; com visibility, volta para 8.
+  */
+  .gaveta-veu {
+    background: rgb(10 10 13 / 0.55);
+    opacity: 0;
+    visibility: hidden;
+    transition:
+      opacity 0.3s ease-out,
+      visibility 0s linear 0.3s;
+  }
+
+  .gaveta-veu[data-aberta="true"] {
+    opacity: 1;
+    visibility: visible;
+    transition:
+      opacity 0.3s ease-out,
+      visibility 0s;
+  }
+
+  @supports (backdrop-filter: blur(4px)) {
+    .gaveta-veu {
+      backdrop-filter: blur(3px);
+    }
+  }
+
+  /* O selo do carrinho salta quando o número muda. */
+  .pulo {
+    animation: pulo 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  @keyframes pulo {
+    0% {
+      transform: scale(1);
+    }
+    35% {
+      transform: scale(1.35);
+    }
+    100% {
+      transform: scale(1);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .fagulha,
+    .page-enter,
+    .pulo {
+      animation: none;
+    }
+
+    /*
+      A gaveta continua aparecendo e desaparecendo — ela precisa. O que sai
+      é o deslizamento: troca de estado instantânea, sem percurso.
+    */
+    .gaveta,
+    .gaveta[data-aberta="true"],
+    .gaveta-veu {
+      transition: none;
+    }
+
+    .tilt {
+      transform: none;
+      transition: none;
+    }
+
+    .sanfona-corpo {
+      transition: none;
+    }
+  }
+
+  /* Sobe um pouco ao passar o dedo/mouse. Em `translate`, pelo mesmo
+     motivo do `.reveal`: `transform` é território do `.tilt`. */
   .lift {
     transition:
-      transform 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+      translate 0.35s cubic-bezier(0.22, 1, 0.36, 1),
       box-shadow 0.35s ease;
   }
 
   .lift:hover {
-    transform: translateY(-4px);
+    translate: 0 -4px;
     box-shadow: var(--shadow-float);
   }
 
   @media (prefers-reduced-motion: reduce) {
     [data-reveal-ready] .reveal {
       opacity: 1;
-      transform: none;
+      translate: none;
     }
 
     .lift:hover {
-      transform: none;
+      translate: none;
     }
   }
 

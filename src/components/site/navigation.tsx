@@ -4,7 +4,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Logo } from "./logo";
-import { useCart, useSession, useStoreSettings } from "@/components/providers";
+import { Pulo } from "./numbers";
+import { useCart, useCartDrawer, useSession, useStoreSettings } from "@/components/providers";
 import { Badge, Button } from "@/components/ui";
 import { cx } from "@/lib/cx";
 import { formatPhone } from "@/lib/format";
@@ -37,6 +38,26 @@ const ICONS = {
   close: "M6 6l12 12M18 6 6 18",
   admin: "M4 6h16M4 12h16M4 18h10",
 } as const;
+
+/* ------------------------------- contador --------------------------------- */
+
+/**
+ * Pastilha com a quantidade de itens no carrinho.
+ *
+ * Ela pula a cada mudança. O ícone do carrinho fica no canto oposto ao botão
+ * que a pessoa acabou de apertar; sem o pulo, o número troca sem ninguém ver.
+ */
+function ContadorDoCarrinho({ itemCount }: { itemCount: number }) {
+  if (itemCount <= 0) return null;
+  return (
+    <Pulo
+      chave={itemCount}
+      className="absolute -top-0.5 right-1 flex size-5 items-center justify-center rounded-full bg-brand-500 text-[11px] font-bold text-coal-900"
+    >
+      {itemCount > 99 ? "99+" : itemCount}
+    </Pulo>
+  );
+}
 
 /* ------------------------------ status da loja ---------------------------- */
 
@@ -100,6 +121,7 @@ function useScrolled(limite = 12) {
 export function SiteHeader() {
   const { user, logout } = useSession();
   const { itemCount } = useCart();
+  const { openDrawer } = useCartDrawer();
   const [menuOpen, setMenuOpen] = useState(false);
   const pathname = usePathname();
   const scrolled = useScrolled();
@@ -109,6 +131,8 @@ export function SiteHeader() {
     { href: "/cardapio", label: "Cardápio" },
     { href: "/meus-pedidos", label: "Meus pedidos" },
   ];
+
+  const naTelaDoPedido = pathname === "/carrinho" || pathname.startsWith("/checkout");
 
   return (
     <>
@@ -168,18 +192,32 @@ export function SiteHeader() {
               </Link>
             )}
 
-            <Link
-              href="/carrinho"
-              className="tap relative hidden items-center justify-center rounded-xl px-3 hover:bg-[var(--surface-sunken)] md:inline-flex"
-              aria-label={`Carrinho, ${itemCount} ${itemCount === 1 ? "item" : "itens"}`}
-            >
-              <Icon path={ICONS.cart} />
-              {itemCount > 0 && (
-                <span className="absolute -top-0.5 right-1 flex size-5 items-center justify-center rounded-full bg-brand-500 text-[11px] font-bold text-coal-900">
-                  {itemCount > 99 ? "99+" : itemCount}
-                </span>
-              )}
-            </Link>
+            {/*
+              Nas telas do carrinho e do checkout o ícone continua um link —
+              abrir uma gaveta com a mesma lista que já está na tela só
+              confundiria. Em qualquer outro lugar ele abre a gaveta, e a
+              pessoa confere o pedido sem perder o lugar no cardápio.
+            */}
+            {naTelaDoPedido ? (
+              <Link
+                href="/carrinho"
+                className="tap relative hidden items-center justify-center rounded-xl px-3 hover:bg-[var(--surface-sunken)] md:inline-flex"
+                aria-label={`Carrinho, ${itemCount} ${itemCount === 1 ? "item" : "itens"}`}
+              >
+                <Icon path={ICONS.cart} />
+                <ContadorDoCarrinho itemCount={itemCount} />
+              </Link>
+            ) : (
+              <button
+                type="button"
+                onClick={openDrawer}
+                className="tap relative hidden items-center justify-center rounded-xl px-3 hover:bg-[var(--surface-sunken)] md:inline-flex"
+                aria-label={`Abrir carrinho, ${itemCount} ${itemCount === 1 ? "item" : "itens"}`}
+              >
+                <Icon path={ICONS.cart} />
+                <ContadorDoCarrinho itemCount={itemCount} />
+              </button>
+            )}
 
             {user ? (
               <div className="hidden items-center gap-2 md:flex">
@@ -297,6 +335,7 @@ export function SiteHeader() {
 export function BottomNav() {
   const pathname = usePathname();
   const { itemCount } = useCart();
+  const { openDrawer } = useCartDrawer();
   const { user } = useSession();
 
   // O painel administrativo tem a própria navegação.
@@ -305,7 +344,9 @@ export function BottomNav() {
   const items = [
     { href: "/", label: "Início", icon: ICONS.home },
     { href: "/cardapio", label: "Cardápio", icon: ICONS.menu },
-    { href: "/carrinho", label: "Carrinho", icon: ICONS.cart, badge: itemCount },
+    // `gaveta` diz que este item abre a gaveta em vez de navegar. O href
+    // continua aí: sem JavaScript, o toque leva para /carrinho normalmente.
+    { href: "/carrinho", label: "Carrinho", icon: ICONS.cart, badge: itemCount, gaveta: true },
     { href: "/meus-pedidos", label: "Pedidos", icon: ICONS.orders },
     { href: user ? "/minha-conta" : "/login", label: user ? "Conta" : "Entrar", icon: ICONS.user },
   ];
@@ -324,6 +365,14 @@ export function BottomNav() {
               <Link
                 href={item.href}
                 aria-current={active ? "page" : undefined}
+                onClick={
+                  "gaveta" in item && item.gaveta && !active && !pathname.startsWith("/checkout")
+                    ? (evento) => {
+                        evento.preventDefault();
+                        openDrawer();
+                      }
+                    : undefined
+                }
                 className={cx(
                   "relative flex flex-col items-center gap-1 rounded-[calc(var(--radius-glass)-4px)] py-2.5",
                   "text-[11px] font-semibold transition-colors",
@@ -340,9 +389,12 @@ export function BottomNav() {
                 <span className="relative">
                   <Icon path={item.icon} className="size-6" />
                   {"badge" in item && (item.badge ?? 0) > 0 && (
-                    <span className="absolute -top-1.5 -right-2 flex min-w-4.5 items-center justify-center rounded-full bg-brand-500 px-1 text-[10px] font-bold text-coal-900">
+                    <Pulo
+                      chave={item.badge ?? 0}
+                      className="absolute -top-1.5 -right-2 flex min-w-4.5 items-center justify-center rounded-full bg-brand-500 px-1 text-[10px] font-bold text-coal-900"
+                    >
                       {(item.badge ?? 0) > 99 ? "99+" : item.badge}
-                    </span>
+                    </Pulo>
                   )}
                 </span>
                 {item.label}

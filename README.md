@@ -706,18 +706,77 @@ npm start
 
 ### Vercel
 
-O projeto roda sem ajustes. Duas observações:
+**1. Ligue o repositório.** Em vercel.com → *Add New* → *Project* →
+importe `site.para.meus.pais`. O Next.js é detectado sozinho e cada push
+na branch de produção passa a publicar automaticamente.
 
-- **Upload de imagens:** o disco é efêmero. Use `ENABLE_UPLOADS="false"` e
-  informe a URL de uma imagem hospedada (S3, R2, Cloudinary) no campo de
-  foto do produto.
-- **Banco:** use um Postgres gerenciado (Neon, Supabase, RDS) e prefira a
-  string de conexão com pool. Acrescente `?sslmode=require` quando o
-  provedor exigir.
+**2. As migrations são aplicadas pelo build, não por você.** O
+`package.json` tem um script `vercel-build`, que a Vercel prefere ao
+`build`:
 
-Rode as migrations no deploy — em `package.json`, `build` já executa
-`prisma generate`; adicione `prisma migrate deploy` ao comando de build do
-provedor se quiser que ele aplique migrations automaticamente.
+```
+prisma migrate deploy && prisma generate && next build
+```
+
+Isto não é conveniência, é a correção de um incidente real: a migration
+`20260912184023_fecha_api_publica` — a que tranca a API pública do Postgres
+— ficou **meses fora do banco de produção** porque aplicar migrations era
+um passo manual que ninguém deu. O banco ficou com `anon` podendo ler e
+escrever em `users`, `orders` e `payments`. Com o `vercel-build`, um
+esquema desatualizado derruba o build em vez de virar um site publicado com
+o banco aberto.
+
+**3. Variáveis de ambiente** (Project → Settings → Environment Variables).
+As obrigatórias:
+
+| Variável | Valor |
+| --- | --- |
+| `DATABASE_URL` | Conexão **com pool** do Supabase (porta `6543`), com `?pgbouncer=true&connection_limit=1` |
+| `DIRECT_URL` | Conexão **direta** (porta `5432`) — é a que o `migrate deploy` usa |
+| `SESSION_SECRET` | 64 caracteres aleatórios: `openssl rand -hex 32` |
+| `APP_URL` | A URL do projeto, ex. `https://dsespetos.vercel.app` |
+| `AUTH_PROVIDER` | `supabase` |
+| `SUPABASE_URL` | `https://<ref>.supabase.co` |
+| `SUPABASE_PUBLISHABLE_KEY` | A chave publicável (`sb_publishable_…`) |
+| `ENABLE_UPLOADS` | `false` — o disco da Vercel é efêmero; use URL de imagem hospedada |
+| `PAYMENT_PROVIDER` | `manual` para PIX copia-e-cola, ou o gateway escolhido |
+| `PIX_KEY`, `PIX_RECEIVER_NAME`, `PIX_RECEIVER_CITY` | Dados de quem recebe o PIX |
+| `MANUAL_WEBHOOK_SECRET` | Segredo para confirmar pagamento por webhook |
+
+As duas strings de conexão saem de Supabase → *Project Settings* →
+*Database* → *Connection string*. Confira a porta: trocar as duas faz o
+`migrate deploy` falhar de um jeito difícil de ler.
+
+`TZ` é opcional — `src/server/env.ts` já assume `America/Sao_Paulo`.
+
+Nenhuma dessas variáveis é `NEXT_PUBLIC_*`, e isso é de propósito: nenhuma
+chave do Supabase chega ao navegador. O `supabase-js` é usado só no
+servidor, e só para autenticação — os dados vão pelo Prisma.
+
+**4. Confira a tranca depois do primeiro deploy.** Um SQL, no editor do
+Supabase. Tem de voltar `0` nas duas linhas:
+
+```sql
+select r.rolname as papel,
+       count(*) filter (where g.grantee is not null) as privilegios
+from (values ('anon'),('authenticated')) as r(rolname)
+left join information_schema.role_table_grants g
+  on g.grantee = r.rolname and g.table_schema = 'public'
+group by r.rolname;
+```
+
+Qualquer número acima de zero significa que a API REST pública está aberta.
+A chave publicável é pública por natureza, então essa é a diferença entre
+"vazou uma chave" e "vazou o banco".
+
+**5. Popule o banco.** Um banco novo sobe vazio: sem cardápio, sem
+configurações, sem administrador. Com as strings de conexão de produção no
+`.env` local, uma vez:
+
+```bash
+npm run db:seed        # categorias, cardápio e configurações iniciais
+npm run admin:create   # administrador, com senha que você digita
+```
 
 ### Docker / VPS
 

@@ -1,0 +1,1073 @@
+@import "tailwindcss";
+
+/* ---------------------------------------------------------------------------
+   DS Espetos — sistema visual
+   Paleta de brasa: carvão escuro, amarelo de chama e creme quente.
+   Os tokens abaixo viram utilitários do Tailwind (bg-brand-500, border-brand-300...).
+
+   SOBRE O AMARELO — leia antes de usar a cor:
+
+   Amarelo é claro. Um #f5b301 tem luminância parecida com a de um papel
+   creme, e isso muda duas regras que valiam para o laranja:
+
+     1. Texto BRANCO sobre amarelo é ilegível (1,85:1, longe dos 4,5:1
+        exigidos). Todo fundo amarelo leva texto ESCURO — `text-coal-900`.
+     2. Texto AMARELO sobre fundo claro também desaparece. Para escrever
+        na cor da marca use a classe `.text-brand`, que já resolve o
+        contraste nos dois temas: ouro escuro no claro, amarelo aberto no
+        escuro.
+
+   Os tons de 500 a 600 são para PREENCHER (botões, selos, barras). Os de
+   700 a 900 são para ESCREVER. Os de 50 a 200, para fundos suaves.
+   --------------------------------------------------------------------------- */
+@theme {
+  --color-brand-50: #fffbeb;
+  --color-brand-100: #fef3c7;
+  --color-brand-200: #fde68a;
+  --color-brand-300: #fcd34d;
+  --color-brand-400: #fbbf24;
+  /* A cor da marca: o amarelo dos botões. Sempre com texto escuro. */
+  --color-brand-500: #f5b301;
+  --color-brand-600: #d99400;
+  /* Daqui para baixo é ouro escuro: serve para texto em fundo claro. */
+  --color-brand-700: #9c6500;
+  --color-brand-800: #7d5000;
+  --color-brand-900: #5c3b00;
+  /* O 950 existe porque várias telas usam `dark:bg-brand-950/40` como fundo
+     de seleção. Sem o token, a classe não gerava cor nenhuma. */
+  --color-brand-950: #3d2700;
+
+  /* Brasa: o vermelho que sobrou do fogo, usado como acento quente. */
+  --color-ember-400: #f97316;
+  --color-ember-500: #e2560c;
+  --color-ember-600: #b7420a;
+
+  --color-coal-50: #f7f5f3;
+  --color-coal-100: #e9e5e0;
+  --color-coal-200: #d3ccc4;
+  --color-coal-300: #b0a599;
+  --color-coal-400: #8a7d6f;
+  --color-coal-500: #6d6154;
+  --color-coal-600: #574c42;
+  --color-coal-700: #453d36;
+  --color-coal-800: #2c2622;
+  --color-coal-900: #1b1714;
+  --color-coal-950: #100e0c;
+
+  /*
+    Duas famílias, dois trabalhos. As duas são carregadas por next/font em
+    app/layout.tsx, que as serve do nosso próprio domínio — sem pedido a
+    terceiro no carregamento da página.
+
+      display  Anton, condensada e pesadíssima. É a voz dos títulos, sempre
+               em caixa alta e com o tracking fechado. Uma fonte só de peso
+               400, mas tão densa que dispensa negrito.
+      sans     Archivo, variável. Tudo que se lê de perto: preço, rótulo,
+               parágrafo, campo de formulário.
+  */
+  --font-display: var(--font-anton), "Arial Narrow", ui-sans-serif, system-ui, sans-serif;
+  --font-sans:
+    var(--font-archivo), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+
+  --radius-card: 1.25rem;
+  --radius-glass: 1.5rem;
+  --shadow-soft: 0 1px 2px rgb(27 23 20 / 0.06), 0 8px 24px -12px rgb(27 23 20 / 0.18);
+  --shadow-lift: 0 2px 4px rgb(27 23 20 / 0.08), 0 16px 40px -18px rgb(27 23 20 / 0.32);
+  /* Sombra de peça que flutua: difusa, baixa e longa. */
+  --shadow-float: 0 2px 6px rgb(27 23 20 / 0.06), 0 24px 60px -24px rgb(27 23 20 / 0.42);
+}
+
+/* ------------------------------- superfícies ------------------------------ */
+:root {
+  --surface: #ffffff;
+  --surface-muted: #faf7f4;
+  --surface-sunken: #f2ece6;
+  --border: #e7e0d8;
+  --text: #1b1714;
+  --text-muted: #6d6154;
+  /* Cor da marca em texto e do anel de foco. Amarelo puro não enxerga em
+     fundo branco, então aqui é o ouro escuro. */
+  --brand-ink: var(--color-brand-700);
+
+  /* ------------------------------ vidro --------------------------------
+     As quatro variáveis que definem uma peça de vidro. Trocá-las por tema
+     é o que faz a mesma classe `.glass` funcionar no claro e no escuro.
+
+       glass-bg      o quanto da superfície aparece. Nunca 0: o texto em
+                     cima precisa de um piso de contraste.
+       glass-edge    a borda. É luz raspando a quina, não um traço.
+       glass-spec    o brilho especular da aresta de cima — o detalhe que
+                     faz o olho ler "vidro" em vez de "transparência".
+       glass-blur    o raio do desfoque do que está atrás.
+     -------------------------------------------------------------------- */
+  --glass-bg: rgb(255 255 255 / 0.62);
+  --glass-bg-strong: rgb(255 255 255 / 0.82);
+  --glass-edge: rgb(255 255 255 / 0.75);
+  --glass-spec: rgb(255 255 255 / 0.9);
+  --glass-shadow: rgb(27 23 20 / 0.12);
+  --glass-blur: 22px;
+  /* Painel: translúcido, mas SEM desfoque. Ver `.panel`. */
+  --panel-bg: rgb(255 255 255 / 0.9);
+
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --surface: #1b1714;
+    --surface-muted: #221d19;
+    --surface-sunken: #100e0c;
+    --border: #352e28;
+    --text: #f7f5f3;
+    --text-muted: #b0a599;
+    /* No escuro é o contrário: o amarelo aberto é que aparece. */
+    --brand-ink: var(--color-brand-300);
+
+    /* No escuro o vidro é fumê: pouca cor própria e o brilho da aresta
+       bem mais discreto, senão a borda vira um risco branco. */
+    --glass-bg: rgb(255 255 255 / 0.07);
+    --glass-bg-strong: rgb(38 32 28 / 0.78);
+    --glass-edge: rgb(255 255 255 / 0.14);
+    --glass-spec: rgb(255 255 255 / 0.22);
+    --glass-shadow: rgb(0 0 0 / 0.5);
+    --glass-blur: 24px;
+    --panel-bg: rgb(255 255 255 / 0.05);
+
+    color-scheme: dark;
+  }
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background-color: var(--surface-muted);
+    color: var(--text);
+    font-family: var(--font-sans);
+    /* Espaço para a barra de navegação inferior no celular. */
+    padding-bottom: env(safe-area-inset-bottom);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Foco sempre visível: navegação por teclado precisa enxergar onde está. */
+  :focus-visible {
+    outline: 2px solid var(--brand-ink);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  /* Respeita quem pediu menos animação no sistema. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+@layer components {
+  .surface {
+    background-color: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-card);
+  }
+
+  .muted {
+    color: var(--text-muted);
+  }
+
+  /* ========================================================================
+     VIDRO LÍQUIDO
+
+     O que faz uma superfície parecer vidro de verdade, e não um retângulo
+     semitransparente, são quatro camadas juntas:
+
+       1. desfoque do fundo, com a saturação empurrada para cima — é o que
+          o vidro real faz com a luz que atravessa;
+       2. um piso de cor própria, para o texto em cima ter contraste;
+       3. brilho especular na aresta de cima e sombra interna na de baixo,
+          que é o que dá ESPESSURA à peça;
+       4. uma sombra externa difusa, que a descola do fundo.
+
+     REGRA DE OURO: vidro só se lê como vidro quando há algo atrás para
+     refratar. Sobre um fundo branco chapado, `backdrop-filter` não faz
+     nada visível. Por isso as seções que usam vidro sempre têm malha de
+     gradiente, foto ou padrão por baixo (ver `.mesh` e `.wash`).
+     ======================================================================== */
+  .glass {
+    position: relative;
+    border-radius: var(--radius-glass);
+    background-color: var(--glass-bg);
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(180%);
+    backdrop-filter: blur(var(--glass-blur)) saturate(180%);
+    border: 1px solid var(--glass-edge);
+    box-shadow:
+      /* aresta de cima iluminada: a espessura do vidro */
+      inset 0 1px 0 0 var(--glass-spec),
+      /* aresta de baixo na sombra */
+      inset 0 -1px 0 0 rgb(0 0 0 / 0.06),
+      0 24px 60px -28px var(--glass-shadow);
+  }
+
+  /*
+    Vidro com mais corpo. Para painéis com MUITO texto — formulários,
+    resumo do pedido — onde o desfoque do fundo atrapalharia a leitura.
+  */
+  .glass-strong {
+    background-color: var(--glass-bg-strong);
+  }
+
+  /*
+    PAINEL: o mesmo material, sem o desfoque.
+
+    Por que existe. `backdrop-filter` obriga o navegador a promover a peça a
+    uma camada de composição própria e a refazer um desfoque a cada quadro
+    de rolagem. Uma barra fixa faz isso bem; VINTE cartões de cardápio
+    fazem o celular de entrada engasgar. Medido nesta página: 13 camadas de
+    desfoque simultâneas antes desta separação.
+
+    A regra que ficou:
+      • `.glass`  — peças que FLUTUAM sobre conteúdo que rola: a barra do
+                    topo, a navegação de baixo, as barras de ação, as
+                    pastilhas sobre foto. São poucas e o desfoque é o que
+                    vende o material.
+      • `.panel`  — peças que ficam PARADAS no fluxo: cartão de produto,
+                    formulário, resumo do pedido. Translucidez sem desfoque
+                    — a lavagem de gradiente do fundo ainda atravessa, e o
+                    custo por peça cai a zero.
+  */
+  .panel {
+    position: relative;
+    border-radius: var(--radius-glass);
+    background-color: var(--panel-bg);
+    border: 1px solid var(--glass-edge);
+    box-shadow:
+      inset 0 1px 0 0 var(--glass-spec),
+      inset 0 -1px 0 0 rgb(0 0 0 / 0.05),
+      0 24px 60px -30px var(--glass-shadow);
+  }
+
+  @media (prefers-reduced-transparency: reduce) {
+    .panel {
+      background-color: var(--surface);
+      border-color: var(--border);
+    }
+  }
+
+  /*
+    Vidro escuro FIXO, que não muda com o tema. Serve dentro do herói e do
+    rodapé, que são escuros nos dois temas: ali o vidro claro do tema claro
+    ficaria um borrão branco.
+  */
+  .glass-dark {
+    position: relative;
+    border-radius: var(--radius-glass);
+    background-color: rgb(255 255 255 / 0.08);
+    -webkit-backdrop-filter: blur(20px) saturate(160%);
+    backdrop-filter: blur(20px) saturate(160%);
+    border: 1px solid rgb(255 255 255 / 0.16);
+    box-shadow:
+      inset 0 1px 0 0 rgb(255 255 255 / 0.22),
+      0 20px 50px -24px rgb(0 0 0 / 0.6);
+  }
+
+  /* Pastilha de vidro: selos, preços, atalhos de horário. */
+  .glass-pill {
+    border-radius: 999px;
+    background-color: var(--glass-bg-strong);
+    -webkit-backdrop-filter: blur(14px) saturate(170%);
+    backdrop-filter: blur(14px) saturate(170%);
+    border: 1px solid var(--glass-edge);
+    box-shadow: inset 0 1px 0 0 var(--glass-spec);
+  }
+
+  /*
+    Barra de ação do polegar (finalizar pedido, agendar).
+
+    No celular é uma placa de vidro solta, fixa acima da navegação
+    inferior. No desktop volta a ser um trecho comum da página: nada de
+    vidro, de sombra, nem de posição fixa. Está aqui em vez de uma pilha
+    de `md:!alguma-coisa` no JSX porque a variante de desktop precisa
+    desligar cinco propriedades de uma vez.
+  */
+  .action-bar {
+    border-radius: var(--radius-glass);
+    background-color: var(--glass-bg-strong);
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(180%);
+    backdrop-filter: blur(var(--glass-blur)) saturate(180%);
+    border: 1px solid var(--glass-edge);
+    box-shadow:
+      inset 0 1px 0 0 var(--glass-spec),
+      var(--shadow-float);
+    padding: 0.75rem;
+  }
+
+  @media (min-width: 48rem) {
+    .action-bar:not(.action-bar-float) {
+      border-radius: 0;
+      background-color: transparent;
+      -webkit-backdrop-filter: none;
+      backdrop-filter: none;
+      border: 0;
+      box-shadow: none;
+      padding: 0;
+    }
+  }
+
+  /*
+    Variante que continua flutuando no desktop: a barra do carrinho no
+    cardápio, que acompanha a rolagem em qualquer largura.
+  */
+  .action-bar-float {
+    /* nada a acrescentar: existe para cancelar o reset acima */
+  }
+
+  @media (prefers-reduced-transparency: reduce) {
+    .action-bar {
+      background-color: var(--surface);
+      -webkit-backdrop-filter: none;
+      backdrop-filter: none;
+    }
+  }
+
+  /*
+    Pastilha de vidro ESCURA, para pousar sobre foto escura. A clara
+    (`.glass-pill`) sobre a foto de um espeto virava um adesivo cinza: a
+    pastilha some no fundo e o preço perde o destaque. Aqui o vidro é
+    fumê e o texto, claro.
+  */
+  /*
+    Pastilha escura de preço, sem desfoque de verdade — e é de propósito.
+
+    Ela mora sempre sobre a foto do produto, que é uma imagem parada: o
+    desfoque não revela movimento nenhum, e o olho não distingue a pastilha
+    desfocada da translúcida. O custo, sim, se distingue: são uma por
+    cartão. Medido na home, as sete pastilhas de preço respondiam por sete
+    das nove camadas de composição simultâneas; sem elas, a home fica em
+    duas. É a mesma decisão de `.panel` contra `.glass`, aplicada a uma
+    peça que se repete.
+  */
+  .glass-pill-dark {
+    border-radius: 999px;
+    color: #fff;
+    background-color: rgb(10 10 13 / 0.72);
+    border: 1px solid rgb(255 255 255 / 0.18);
+    box-shadow: inset 0 1px 0 0 rgb(255 255 255 / 0.22);
+  }
+
+  @media (prefers-reduced-transparency: reduce) {
+    .glass-pill-dark {
+      background-color: rgb(10 10 13 / 0.92) !important;
+    }
+  }
+
+  /*
+    Reflexo que escorrega pela peça. É o brilho que passa quando se
+    inclina um objeto de vidro na luz — aqui, no hover.
+  */
+  .glass-sheen::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    background: linear-gradient(
+      105deg,
+      transparent 35%,
+      rgb(255 255 255 / 0.28) 48%,
+      transparent 60%
+    );
+    background-size: 280% 100%;
+    background-position: 130% 0;
+    opacity: 0;
+    transition:
+      background-position 0.7s ease,
+      opacity 0.3s ease;
+  }
+
+  .glass-sheen:hover::after,
+  .glass-sheen:focus-visible::after {
+    opacity: 1;
+    background-position: -30% 0;
+  }
+
+  /*
+    SEM VIDRO, POR PEDIDO DO SISTEMA.
+
+    Quem liga "reduzir transparência" no sistema operacional normalmente
+    tem dificuldade de ler texto sobre fundo movimentado. Devolvemos
+    superfícies chapadas — o desenho perde graça, a leitura não.
+  */
+  @media (prefers-reduced-transparency: reduce) {
+    .glass,
+    .glass-strong,
+    .glass-pill {
+      background-color: var(--surface) !important;
+      -webkit-backdrop-filter: none !important;
+      backdrop-filter: none !important;
+      border-color: var(--border) !important;
+    }
+
+    .glass-dark {
+      background-color: var(--color-coal-800) !important;
+      -webkit-backdrop-filter: none !important;
+      backdrop-filter: none !important;
+    }
+
+    .glass-sheen::after {
+      display: none;
+    }
+  }
+
+  /* Navegador sem backdrop-filter: mesma ideia, com opacidade maior. */
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .glass,
+    .glass-pill {
+      background-color: var(--glass-bg-strong);
+    }
+
+    .glass-dark {
+      background-color: rgb(27 23 20 / 0.86);
+    }
+  }
+
+  /* ========================================================================
+     FUNDOS — o que o vidro tem para refratar
+     ======================================================================== */
+
+  /*
+    Malha de brasa. Três clarões de cor sobre carvão, como o calor subindo
+    da grelha. É o fundo do herói e do rodapé.
+  */
+  .mesh {
+    position: relative;
+    isolation: isolate;
+    /*
+      A base é um preto FRIO, levemente azulado — não o marrom da paleta.
+      Foi a segunda correção grande daqui: com base marrom, os clarões
+      laranja caíam sobre um fundo da mesma temperatura e o herói inteiro
+      virava um borrão sépia. Fundo frio contra brasa quente é o que faz o
+      fogo parecer fogo.
+    */
+    background-color: #0a0a0d;
+    color: var(--color-coal-50);
+  }
+
+  /*
+    A malha precisa ser FORTE. Na primeira versão os clarões estavam em 20%
+    de opacidade sobre carvão quase preto: no monitor sumiam, o fundo virava
+    uma chapa preta e as peças de vidro por cima pareciam retângulos cinzas,
+    porque não havia cor nenhuma para elas refratarem.
+
+    A leitura é de brasa vista de perto: o carvão aceso embaixo (laranja
+    quente subindo do rodapé), o calor batendo na parede à esquerda (âmbar)
+    e um respiro frio no alto à direita, que evita o conjunto virar um
+    borrão monocromático de laranja.
+  */
+  .mesh::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -2;
+    background:
+      /* o carvão aceso, subindo do pé da seção */
+      radial-gradient(75% 48% at 50% 104%, rgb(249 115 22 / 0.5), transparent 70%),
+      radial-gradient(42% 30% at 50% 102%, rgb(253 224 71 / 0.3), transparent 72%),
+      /* o calor batendo na parede à esquerda */
+      radial-gradient(46% 55% at 2% 8%, rgb(245 179 1 / 0.34), transparent 68%),
+      /* e um contraponto frio à direita, para o conjunto não virar sépia */
+      radial-gradient(40% 46% at 98% 14%, rgb(99 102 241 / 0.16), transparent 72%),
+      radial-gradient(34% 40% at 88% 72%, rgb(56 189 248 / 0.08), transparent 74%);
+  }
+
+  /*
+    Grelha. Linhas diagonais finíssimas, quase no limite do perceptível —
+    é o que tira a chapa de cor do fundo e dá textura de material.
+  */
+  /*
+    Grelha + grão no MESMO pseudo-elemento.
+
+    Este arquivo já tinha um defeito escondido aqui: `.mesh` e `.grain`
+    escreviam os dois em `::before`, e como as seções usavam as duas
+    classes juntas, a folha de ruído sobrescrevia a malha de gradiente —
+    o herói ficava uma chapa marrom e o vidro por cima não tinha cor
+    nenhuma para refratar. Um elemento só tem dois pseudo-elementos, então
+    as duas texturas viraram duas camadas de `background-image` de um só.
+  */
+  .mesh::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    opacity: 0.55;
+    background-image:
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E"),
+      repeating-linear-gradient(-45deg, rgb(255 255 255 / 0.045) 0 1px, transparent 1px 11px);
+    background-size:
+      160px 160px,
+      auto;
+  }
+
+  /*
+    Lavagem quente para as seções claras. Sem ela o vidro no tema claro
+    não teria o que desfocar e pareceria só um cartão translúcido.
+
+    USE SOMENTE EM ELEMENTO DE LARGURA TOTAL — hoje, o <main> das telas do
+    cliente e o invólucro do painel. O gradiente é pintado no próprio
+    elemento, então numa seção centrada com `max-w-*` ele desenha um
+    retângulo de borda visível no meio da página. Duas seções da home
+    tinham `wash` junto com `mx-auto max-w-3xl`: no tema escuro dava para
+    ver o retângulo mais claro atrás das perguntas frequentes.
+  */
+  .wash {
+    position: relative;
+    isolation: isolate;
+  }
+
+  .wash::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background:
+      radial-gradient(48% 46% at 88% -5%, rgb(245 179 1 / 0.26), transparent 62%),
+      radial-gradient(42% 52% at 2% 24%, rgb(249 115 22 / 0.14), transparent 62%),
+      /* um respiro frio, pelo mesmo motivo da malha do herói: sem ele o
+         tema escuro inteiro vira um degradê sépia */
+      radial-gradient(38% 42% at 6% 78%, rgb(99 102 241 / 0.1), transparent 66%),
+      radial-gradient(36% 38% at 60% 100%, rgb(245 179 1 / 0.12), transparent 64%);
+  }
+
+  /*
+    Grão para superfícies que NÃO são `.mesh` (que já tem o seu embutido).
+    Uma folha de ruído gerada em SVG — nada de arquivo de imagem. Serve
+    para tirar o "degradê de computador" das faixas de cor e dar textura
+    impressa ao conjunto.
+
+    ATENÇÃO: usa `::before`, o mesmo de `.mesh::before`. Não combine as
+    duas classes no mesmo elemento.
+  */
+  .grain::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    opacity: 0.32;
+    mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
+  }
+
+  /* ========================================================================
+     TIPOGRAFIA DE CARTAZ
+     ======================================================================== */
+
+  /*
+    A voz dos títulos: condensada, caixa alta, tracking fechado e entrelinha
+    curta. Em tamanho grande, `text-wrap: balance` evita a linha órfã de uma
+    palavra só, que estraga qualquer manchete.
+  */
+  .display {
+    font-family: var(--font-display);
+    font-weight: 400;
+    text-transform: uppercase;
+    letter-spacing: -0.015em;
+    line-height: 0.86;
+    text-wrap: balance;
+  }
+
+  /* Rótulo miúdo de seção: espaçado, para funcionar como sobrescrito. */
+  .eyebrow {
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+  }
+
+  /*
+    Texto vazado, só contorno. Usado em uma palavra do título para criar
+    hierarquia sem mudar de cor nem de tamanho.
+  */
+  /*
+    O vazio vem de `-webkit-text-fill-color`, e NÃO de `color: transparent`.
+    A diferença importa: `color` é o que qualquer utilitário de cor do
+    Tailwind escreve, e utilitário ganha de classe de componente na cascata —
+    então `text-brand-400` reenchia a letra e o contorno sumia. Com
+    `text-fill-color`, o `color` fica livre para pintar o TRAÇO via
+    `currentColor` e o miolo continua vazado.
+  */
+  .display-outline {
+    -webkit-text-fill-color: transparent;
+    -webkit-text-stroke: 2px currentColor;
+    paint-order: stroke fill;
+  }
+
+  @supports not (-webkit-text-stroke: 1px black) {
+    .display-outline {
+      -webkit-text-fill-color: currentColor;
+    }
+  }
+
+  /* ========================================================================
+     MOVIMENTO
+     ======================================================================== */
+
+  /*
+    Entrada por scroll. O estado inicial só é aplicado quando o JavaScript
+    marca `data-reveal-ready` no documento — sem isso, quem estiver com o
+    script bloqueado veria a página em branco para sempre.
+
+    POR QUE `translate` E NÃO `transform`
+
+    Três efeitos podem cair no mesmo elemento: a entrada por scroll, o
+    `.lift` do hover e a inclinação 3D do `.tilt`. Se todos escrevessem em
+    `transform`, o último da cascata apagaria os outros — e foi exatamente
+    o que aconteceu aqui: `.reveal.is-in` (0-2-0) vencia `.tilt` (0-1-0) e
+    zerava a inclinação, então as molduras do herói nunca se mexiam,
+    embora o JavaScript estivesse escrevendo --rx/--ry corretamente.
+
+    A correção é dar a cada efeito a sua propriedade. `translate` e
+    `rotate` são propriedades independentes de `transform` e compõem com
+    ela; assim a entrada desliza, o hover levanta e o cursor inclina, os
+    três ao mesmo tempo, sem ninguém pisar em ninguém.
+  */
+  [data-reveal-ready] .reveal {
+    opacity: 0;
+    translate: 0 18px;
+  }
+
+  [data-reveal-ready] .reveal.is-in {
+    opacity: 1;
+    translate: 0 0;
+    transition:
+      opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1),
+      translate 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  /*
+    Faixa que desliza. Duas cópias da mesma lista correndo lado a lado: a
+    primeira sai de cena exatamente quando a segunda ocupa o lugar dela, e
+    o laço fica invisível.
+
+    `prefers-reduced-motion` para a faixa no lugar — e como a lista está
+    duplicada, o `aria-hidden` na segunda cópia evita o leitor de tela ler
+    tudo duas vezes.
+  */
+  .marquee {
+    display: flex;
+    width: max-content;
+    animation: marquee 32s linear infinite;
+  }
+
+  .marquee:hover {
+    animation-play-state: paused;
+  }
+
+  @keyframes marquee {
+    to {
+      transform: translateX(-50%);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .marquee {
+      animation: none;
+    }
+  }
+
+  /* ========================================================================
+     INTERAÇÃO — o que responde ao ponteiro
+
+     Tudo aqui é opcional por natureza: são afordâncias de mouse. Em tela de
+     toque e para quem pediu menos animação, o componente em
+     components/site/motion.tsx simplesmente não liga os listeners, e estas
+     regras ficam inertes porque as variáveis nunca são escritas.
+     ======================================================================== */
+
+  /*
+    Brilho que acompanha o cursor.
+
+    É o gesto que mais vende "vidro": a luz não fica parada na peça, ela
+    segue a mão. As coordenadas chegam em `--mx`/`--my` (em porcentagem) e
+    `--spot` liga/desliga a opacidade, para a entrada e a saída serem
+    suaves em vez de um pisca-pisca.
+  */
+  .spotlight {
+    position: relative;
+    isolation: isolate;
+  }
+
+  .spotlight::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    pointer-events: none;
+    opacity: var(--spot, 0);
+    transition: opacity 0.35s ease;
+    background: radial-gradient(
+      18rem circle at var(--mx, 50%) var(--my, 50%),
+      rgb(245 179 1 / 0.22),
+      transparent 60%
+    );
+  }
+
+  /* Sobre fundo escuro o brilho é mais quente e um pouco mais forte. */
+  .spotlight-dark::before {
+    background: radial-gradient(
+      20rem circle at var(--mx, 50%) var(--my, 50%),
+      rgb(249 115 22 / 0.3),
+      transparent 62%
+    );
+  }
+
+  /*
+    Inclinação em perspectiva.
+
+    O ângulo vem de `--rx`/`--ry`, escritos pelo ponteiro. `translateZ`
+    força a peça para uma camada própria e evita o texto tremer durante a
+    rotação.
+  */
+  .tilt {
+    /*
+      `--py` entra na MESMA declaração de transform que a rotação. Se a
+      paralaxe viesse de uma segunda regra, uma sobrescreveria a outra —
+      `transform` não acumula.
+
+      A paralaxe sai de `--progresso`, a mesma variável da barra de
+      rolagem: movimento ligado ao scroll sem uma linha de JavaScript
+      extra, e sem listener nenhum.
+    */
+    transform: perspective(1000px) translate3d(0, var(--py, 0px), 0)
+      rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg));
+    transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+    transform-style: preserve-3d;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .tilt {
+      --py: 0px;
+    }
+  }
+
+  /*
+    Barra de progresso da rolagem: um fio de luz no topo da janela.
+    `scaleX` em vez de `width` porque escala é composta na GPU e não
+    dispara recálculo de layout a cada quadro.
+  */
+  .scroll-progress {
+    position: fixed;
+    inset: 0 0 auto 0;
+    height: 2px;
+    z-index: 60;
+    transform-origin: 0 50%;
+    transform: scaleX(var(--progresso, 0));
+    background: linear-gradient(
+      90deg,
+      var(--color-brand-600),
+      var(--color-brand-400),
+      var(--color-ember-400)
+    );
+    pointer-events: none;
+  }
+
+  /*
+    Fagulha da brasa. Sobe, oscila de lado e apaga. Cada peça recebe o
+    próprio atraso e a própria duração por variável, então três elementos
+    iguais no HTML já parecem um enxame.
+  */
+  .fagulha {
+    position: absolute;
+    bottom: -1rem;
+    width: var(--tamanho, 3px);
+    height: var(--tamanho, 3px);
+    border-radius: 999px;
+    background: var(--color-brand-300);
+    box-shadow: 0 0 6px 1px rgb(249 115 22 / 0.7);
+    opacity: 0;
+    animation: fagulha var(--duracao, 7s) linear var(--atraso, 0s) infinite;
+    will-change: transform, opacity;
+  }
+
+  @keyframes fagulha {
+    0% {
+      opacity: 0;
+      transform: translate3d(0, 0, 0) scale(0.6);
+    }
+    12% {
+      opacity: 1;
+    }
+    70% {
+      opacity: 0.8;
+    }
+    100% {
+      opacity: 0;
+      transform: translate3d(var(--deriva, 30px), -28rem, 0) scale(1.1);
+    }
+  }
+
+  /*
+    Troca de página. O conteúdo novo entra com um deslize curtíssimo — o
+    suficiente para o olho perceber que mudou de tela, sem atrasar quem
+    está com pressa.
+  */
+  .page-enter {
+    animation: pageEnter 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  @keyframes pageEnter {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+  }
+
+  /*
+    Sanfona com altura animada de verdade.
+
+    `interpolate-size: allow-keywords` é o que permite animar de 0 até
+    `auto` sem medir nada em JavaScript. Onde o navegador não suporta, o
+    conteúdo simplesmente aparece e desaparece — sem quebrar.
+  */
+  @supports (interpolate-size: allow-keywords) {
+    :root {
+      interpolate-size: allow-keywords;
+    }
+
+    .sanfona-corpo {
+      height: 0;
+      overflow: hidden;
+      transition:
+        height 0.4s cubic-bezier(0.22, 1, 0.36, 1),
+        opacity 0.3s ease;
+      opacity: 0;
+    }
+
+    .sanfona[data-aberta="true"] .sanfona-corpo {
+      height: auto;
+      opacity: 1;
+    }
+  }
+
+  @supports not (interpolate-size: allow-keywords) {
+    .sanfona-corpo {
+      display: none;
+    }
+
+    .sanfona[data-aberta="true"] .sanfona-corpo {
+      display: block;
+    }
+  }
+
+  /*
+    Gaveta: desliza pela borda direita.
+
+    É transição, não animação de entrada, porque a gaveta fica montada o
+    tempo todo — assim ela sai deslizando ao fechar, e não desaparece de
+    uma vez. O painel também não pode ficar acessível ao teclado enquanto
+    está fora da tela: `visibility` resolve isso, e entra na transição com
+    atraso para não cortar o deslizamento de saída no meio.
+  */
+  .gaveta {
+    transform: translateX(100%);
+    transition:
+      transform 0.36s cubic-bezier(0.22, 1, 0.36, 1),
+      visibility 0s linear 0.36s;
+    visibility: hidden;
+    will-change: transform;
+  }
+
+  .gaveta[data-aberta="true"] {
+    transform: translateX(0);
+    visibility: visible;
+    transition:
+      transform 0.36s cubic-bezier(0.22, 1, 0.36, 1),
+      visibility 0s;
+  }
+
+  /*
+    O véu carrega `backdrop-filter`, e um `backdrop-filter` vale uma camada
+    de composição própria — o navegador refaz o desfoque a cada quadro de
+    rolagem. Fechado, ele não pode custar nada: `visibility: hidden` tira a
+    camada do caminho, enquanto só `opacity: 0` a deixaria viva atrás da
+    página inteira. Medido: com o véu só transparente, a home marcava 10
+    camadas de desfoque simultâneas; com visibility, volta para 8.
+  */
+  .gaveta-veu {
+    background: rgb(10 10 13 / 0.55);
+    opacity: 0;
+    visibility: hidden;
+    transition:
+      opacity 0.3s ease-out,
+      visibility 0s linear 0.3s;
+  }
+
+  .gaveta-veu[data-aberta="true"] {
+    opacity: 1;
+    visibility: visible;
+    transition:
+      opacity 0.3s ease-out,
+      visibility 0s;
+  }
+
+  @supports (backdrop-filter: blur(4px)) {
+    .gaveta-veu {
+      backdrop-filter: blur(3px);
+    }
+  }
+
+  /* O selo do carrinho salta quando o número muda. */
+  .pulo {
+    animation: pulo 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  @keyframes pulo {
+    0% {
+      transform: scale(1);
+    }
+    35% {
+      transform: scale(1.35);
+    }
+    100% {
+      transform: scale(1);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .fagulha,
+    .page-enter,
+    .pulo {
+      animation: none;
+    }
+
+    /*
+      A gaveta continua aparecendo e desaparecendo — ela precisa. O que sai
+      é o deslizamento: troca de estado instantânea, sem percurso.
+    */
+    .gaveta,
+    .gaveta[data-aberta="true"],
+    .gaveta-veu {
+      transition: none;
+    }
+
+    .tilt {
+      transform: none;
+      transition: none;
+    }
+
+    .sanfona-corpo {
+      transition: none;
+    }
+  }
+
+  /* Sobe um pouco ao passar o dedo/mouse. Em `translate`, pelo mesmo
+     motivo do `.reveal`: `transform` é território do `.tilt`. */
+  .lift {
+    transition:
+      translate 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+      box-shadow 0.35s ease;
+  }
+
+  .lift:hover {
+    translate: 0 -4px;
+    box-shadow: var(--shadow-float);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    [data-reveal-ready] .reveal {
+      opacity: 1;
+      translate: none;
+    }
+
+    .lift:hover {
+      translate: none;
+    }
+  }
+
+  /*
+    Texto na cor da marca, com contraste garantido nos dois temas.
+    Use sempre esta classe em vez de `text-brand-500`/`text-brand-600`:
+    amarelo sobre fundo claro não se lê.
+  */
+  .text-brand {
+    color: var(--brand-ink);
+  }
+
+  /* Área mínima de toque de 44px — dedo em tela de celular. */
+  .tap {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  .skeleton {
+    background: linear-gradient(
+      90deg,
+      var(--surface-sunken) 25%,
+      var(--surface-muted) 37%,
+      var(--surface-sunken) 63%
+    );
+    background-size: 400% 100%;
+    animation: shimmer 1.4s ease infinite;
+  }
+
+  @keyframes shimmer {
+    0% {
+      background-position: 100% 50%;
+    }
+    100% {
+      background-position: 0 50%;
+    }
+  }
+
+  .fade-in {
+    animation: fadeIn 0.24s ease-out;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+}
+
+/* ------------------------------- impressão -------------------------------- */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+
+  body {
+    background: #fff;
+    color: #000;
+    padding: 0;
+  }
+
+  .print-sheet {
+    box-shadow: none !important;
+    border: none !important;
+    max-width: 100% !important;
+    padding: 0 !important;
+  }
+
+  @page {
+    margin: 12mm;
+  }
+}

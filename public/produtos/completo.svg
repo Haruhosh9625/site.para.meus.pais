@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 360" role="img" aria-label="Completo, acompanhamento">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2b1c07"/><stop offset="1" stop-color="#150e03"/>
+    </linearGradient>
+    <radialGradient id="glow" cx=".5" cy=".75" r=".6">
+      <stop offset="0" stop-color="#ffc25c" stop-opacity=".3"/><stop offset="1" stop-color="#ffc25c" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="360" height="360" fill="url(#bg)"/>
+  <ellipse cx="180" cy="250" rx="150" ry="70" fill="url(#glow)"/>
+  <ellipse cx="180" cy="228" rx="118" ry="46" fill="#efe7d8" stroke="#c9bda6" stroke-width="3"/>
+  <ellipse cx="180" cy="220" rx="104" ry="38" fill="#fdf8ee"/>
+  <path d="M96 216c22-30 54-44 84-44s62 14 84 44c-24 18-54 26-84 26s-60-8-84-26z" fill="#e8c98a"/>
+  <g fill="#7d3a1d">
+    <ellipse cx="140" cy="200" rx="20" ry="13"/><ellipse cx="186" cy="192" rx="22" ry="14"/><ellipse cx="228" cy="203" rx="19" ry="12"/>
+  </g>
+  <g fill="#3f7d2e">
+    <circle cx="122" cy="214" r="7"/><circle cx="164" cy="210" r="6"/><circle cx="208" cy="214" r="7"/><circle cx="244" cy="212" r="6"/>
+  </g>
+  <g fill="#d8452f">
+    <circle cx="150" cy="216" r="6"/><circle cx="198" cy="219" r="6"/><circle cx="232" cy="216" r="5"/>
+  </g>
+  <path d="M126 178c6-16 20-26 34-26M186 168c4-14 16-22 28-22" stroke="#ffd9a0" stroke-width="4" stroke-linecap="round" opacity=".6" fill="none"/>
+</svg>

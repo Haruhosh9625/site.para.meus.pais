@@ -9,7 +9,10 @@ const config = [
   {
     // next-env.d.ts é gerado pelo Next a cada build; os *.mjs da raiz são
     // utilitários de captura de tela usados durante o desenvolvimento.
-    ignores: ["node_modules/**", ".next/**", "next-env.d.ts", "*.mjs"],
+    // `.claude/` guarda as skills do agente, código de terceiros instalado
+    // por `npx skills add` (JavaScript minificado incluso). Não é código do
+    // projeto: lintá-lo só enterraria os avisos que importam.
+    ignores: ["node_modules/**", ".next/**", "next-env.d.ts", "*.mjs", ".claude/**"],
   },
   {
     rules: {

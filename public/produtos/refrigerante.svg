@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 360" role="img" aria-label="Refrigerante 1 litro">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0d2436"/><stop offset="1" stop-color="#061520"/>
+    </linearGradient>
+    <linearGradient id="soda" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#6b2d16"/><stop offset=".45" stop-color="#3f1a0c"/><stop offset="1" stop-color="#61280f"/>
+    </linearGradient>
+    <linearGradient id="shine" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#ffffff" stop-opacity=".28"/><stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <rect width="360" height="360" fill="url(#bg)"/>
+  <ellipse cx="180" cy="316" rx="96" ry="22" fill="#000" opacity=".35"/>
+  <path d="M148 62h64v26c0 10 22 24 22 52v148c0 16-12 24-28 24h-52c-16 0-28-8-28-24V140c0-28 22-42 22-52z" fill="url(#soda)" stroke="#20303c" stroke-width="3"/>
+  <rect x="150" y="44" width="60" height="24" rx="6" fill="#c8102e" stroke="#8a0b20" stroke-width="3"/>
+  <rect x="140" y="176" width="80" height="58" rx="8" fill="#f4f1ea" opacity=".93"/>
+  <text x="180" y="204" font-family="system-ui,-apple-system,Segoe UI,Roboto,sans-serif" font-size="22" font-weight="700" fill="#1d1d1b" text-anchor="middle">1 L</text>
+  <text x="180" y="224" font-family="system-ui,-apple-system,Segoe UI,Roboto,sans-serif" font-size="12" fill="#5b5b57" text-anchor="middle">REFRIGERANTE</text>
+  <rect x="152" y="96" width="14" height="192" rx="7" fill="url(#shine)"/>
+</svg>

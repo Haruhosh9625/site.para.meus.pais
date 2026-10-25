@@ -21,12 +21,18 @@ const CATEGORIES = [
   { name: "Acompanhamentos", slug: "acompanhamentos", position: 3 },
 ];
 
+/*
+  As descrições dizem só o que o nome do item já diz. Elogio e detalhe de
+  preparo ("artesanal", "o mais pedido da casa", o corte da carne) só entram
+  quando os donos confirmarem — texto inventado num cardápio é uma promessa
+  que a cozinha não fez. Ajuste em /admin/produtos, não aqui.
+*/
 const PRODUCTS = [
   // ------------------------------- Espetos --------------------------------
   {
     slug: "espeto-de-porco",
     name: "Espeto de Porco",
-    description: "Cubos suculentos de pernil suíno temperados na hora e assados na brasa.",
+    description: "Espeto de carne de porco.",
     priceCents: 800,
     category: "espetos",
     image: "/produtos/espeto-porco.svg",
@@ -35,7 +41,7 @@ const PRODUCTS = [
   {
     slug: "espeto-de-carne",
     name: "Espeto de Carne",
-    description: "Carne bovina macia, temperada com sal grosso e grelhada no ponto certo.",
+    description: "Espeto de carne bovina.",
     priceCents: 800,
     category: "espetos",
     image: "/produtos/espeto-carne.svg",
@@ -44,7 +50,7 @@ const PRODUCTS = [
   {
     slug: "espeto-de-toscana",
     name: "Espeto de Toscana",
-    description: "Linguiça toscana artesanal, dourada por fora e suculenta por dentro.",
+    description: "Espeto de linguiça toscana.",
     priceCents: 800,
     category: "espetos",
     image: "/produtos/espeto-toscana.svg",
@@ -53,7 +59,7 @@ const PRODUCTS = [
   {
     slug: "espeto-de-frango",
     name: "Espeto de Frango",
-    description: "Filé de frango temperado, macio e assado na brasa.",
+    description: "Espeto de frango.",
     priceCents: 800,
     category: "espetos",
     image: "/produtos/espeto-frango.svg",
@@ -62,7 +68,7 @@ const PRODUCTS = [
   {
     slug: "espeto-de-frango-com-bacon",
     name: "Espeto de Frango com Bacon",
-    description: "Frango envolto em bacon crocante — o mais pedido da casa.",
+    description: "Espeto de frango com bacon.",
     priceCents: 800,
     category: "espetos",
     image: "/produtos/espeto-frango-bacon.svg",
@@ -73,7 +79,7 @@ const PRODUCTS = [
   {
     slug: "refrigerante-1-litro",
     name: "Refrigerante 1 litro",
-    description: "Refrigerante gelado de 1 litro. Consulte os sabores disponíveis.",
+    description: "Refrigerante de 1 litro. Consulte os sabores disponíveis.",
     priceCents: 1000,
     category: "bebidas",
     image: "/produtos/refrigerante.svg",
@@ -85,8 +91,8 @@ const PRODUCTS = [
     slug: "completo",
     name: "Completo",
     description:
-      "Acompanhamento completo da casa. Item independente: não vem junto com o espeto, " +
-      "adicione separadamente ao seu pedido.",
+      "Acompanhamento vendido à parte: não vem junto com o espeto. " +
+      "Adicione separadamente ao seu pedido.",
     priceCents: 1200,
     category: "acompanhamentos",
     image: "/produtos/completo.svg",

@@ -327,17 +327,26 @@ O Supabase entra em dois papéis, e os dois são configuração — não código
 ### 1. Banco de dados
 
 É um PostgreSQL comum. O Prisma fala com ele pela senha do banco, do mesmo
-jeito que falaria com qualquer outro Postgres. Duas strings de conexão, em
-*Project Settings → Database → Connection string*:
+jeito que falaria com qualquer outro Postgres. Duas strings de conexão, no
+botão **Connect** do topo do painel do Supabase:
 
-| Variável       | Qual usar                        | Para quê                   |
-| -------------- | -------------------------------- | -------------------------- |
-| `DATABASE_URL` | a do **pooler** (porta 6543)     | a aplicação                |
-| `DIRECT_URL`   | a **direta** (porta 5432)        | as migrations              |
+| Variável       | Qual usar                                                  | Para quê      |
+| -------------- | ---------------------------------------------------------- | ------------- |
+| `DATABASE_URL` | **Transaction pooler** (porta 6543) + `?pgbouncer=true&connection_limit=1` | a aplicação   |
+| `DIRECT_URL`   | **Session pooler** (porta 5432, host `…pooler.supabase.com`) | as migrations |
 
-O pooler existe porque em servidor sem estado (Vercel) cada requisição
-abriria uma conexão nova e o banco esgotaria o limite. Migrations precisam
-da direta: o pooler não executa DDL.
+O pooler em modo transação existe porque em servidor sem estado (Vercel)
+cada requisição abriria uma conexão nova e o banco esgotaria o limite. Ele
+não aceita *prepared statements* — é para isso o `?pgbouncer=true`, que os
+desliga no Prisma — nem os recursos de sessão que o `migrate deploy` usa.
+Por isso as migrations vão por uma conexão de **sessão**.
+
+**Por que o Session pooler e não a "Direct connection".** No plano gratuito
+a conexão direta (`db.<ref>.supabase.co:5432`) é **só IPv6**, e a Vercel é
+**só IPv4** — a própria documentação do Supabase cita a Vercel nessa lista.
+Com a direta na `DIRECT_URL`, o build na Vercel falha com "can't reach
+database server". O Session pooler é IPv4 em todos os planos. Fora da
+Vercel, numa máquina com IPv6, a direta funciona e é a recomendada.
 
 ```bash
 npm run db:deploy   # aplica as migrations
@@ -731,8 +740,8 @@ As obrigatórias:
 
 | Variável | Valor |
 | --- | --- |
-| `DATABASE_URL` | Conexão **com pool** do Supabase (porta `6543`), com `?pgbouncer=true&connection_limit=1` |
-| `DIRECT_URL` | Conexão **direta** (porta `5432`) — é a que o `migrate deploy` usa |
+| `DATABASE_URL` | **Transaction pooler** do Supabase (porta `6543`), com `?pgbouncer=true&connection_limit=1` no fim |
+| `DIRECT_URL` | **Session pooler** (porta `5432`, host `…pooler.supabase.com`) — é a que o `migrate deploy` usa. **Não** a "Direct connection": ela é só IPv6 e a Vercel é só IPv4 |
 | `SESSION_SECRET` | 64 caracteres aleatórios: `openssl rand -hex 32` |
 | `APP_URL` | A URL do projeto, ex. `https://dsespetos.vercel.app` |
 | `AUTH_PROVIDER` | `supabase` |
@@ -743,11 +752,20 @@ As obrigatórias:
 | `PIX_KEY`, `PIX_RECEIVER_NAME`, `PIX_RECEIVER_CITY` | Dados de quem recebe o PIX |
 | `MANUAL_WEBHOOK_SECRET` | Segredo para confirmar pagamento por webhook |
 
-As duas strings de conexão saem de Supabase → *Project Settings* →
-*Database* → *Connection string*. Confira a porta: trocar as duas faz o
-`migrate deploy` falhar de um jeito difícil de ler.
+As duas strings saem do botão **Connect**, no topo do painel do Supabase:
+escolha *Transaction pooler* para uma e *Session pooler* para a outra. As
+duas usam o mesmo host e o mesmo usuário (`postgres.<ref>`); só a porta
+muda. Troque `[YOUR-PASSWORD]` pela senha do banco — se não lembrar, há um
+*Reset database password* em Project Settings → Database.
 
-`TZ` é opcional — `src/server/env.ts` já assume `America/Sao_Paulo`.
+`TZ` **não pode** ser definida na Vercel (é um nome reservado, a API recusa)
+e não faz falta: `src/server/env.ts` já assume `America/Sao_Paulo`. A loja
+fica em Macapá (`America/Belem`), que tem o mesmo fuso, UTC−3, e nenhum dos
+dois tem horário de verão hoje.
+
+**Plano gratuito do Supabase pausa sozinho** depois de alguns dias sem uso.
+Pausado, o site fica fora do ar. Reative em supabase.com, no próprio
+projeto; com movimento diário de clientes, ele não pausa.
 
 Nenhuma dessas variáveis é `NEXT_PUBLIC_*`, e isso é de propósito: nenhuma
 chave do Supabase chega ao navegador. O `supabase-js` é usado só no

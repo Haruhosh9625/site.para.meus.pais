@@ -1,0 +1,547 @@
+// ---------------------------------------------------------------------------
+// DS Espetos — schema do banco de dados
+//
+// Regras de ouro deste schema:
+//  1. Todo valor monetário é INTEIRO EM CENTAVOS. Nunca Float/Double.
+//     R$ 8,00 é gravado como 800. Isso elimina erros de ponto flutuante.
+//  2. OrderItem guarda um SNAPSHOT do produto (nome e preço praticados).
+//     Pedidos antigos nunca mudam de valor quando o cardápio muda de preço.
+//  3. Produtos nunca são apagados quando já foram vendidos: usa-se
+//     `active = false` (desativação) para preservar o histórico.
+// ---------------------------------------------------------------------------
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  /// Conexão da aplicação. No Supabase é a do pooler (porta 6543): em
+  /// servidor sem estado, abrir conexão direta a cada requisição esgota o
+  /// limite de conexões do banco.
+  url       = env("DATABASE_URL")
+  /// Conexão direta (porta 5432), usada só pelas migrations — o pooler não
+  /// dá conta de DDL. É obrigatória: fora do Supabase, repita a mesma
+  /// string da DATABASE_URL.
+  directUrl = env("DIRECT_URL")
+}
+
+// --------------------------------- Enums ----------------------------------
+
+enum Role {
+  CUSTOMER
+  ADMIN
+}
+
+enum DeliveryType {
+  DELIVERY // Entrega
+  PICKUP // Retirada no estabelecimento
+}
+
+enum PaymentMethod {
+  PIX
+  CARD
+  CASH
+}
+
+enum PaymentStatus {
+  PENDING // Aguardando pagamento
+  PAID // Pagamento confirmado
+  FAILED // Falhou / expirou
+  REFUNDED // Reembolsado
+  CANCELLED // Cancelado antes de pagar
+}
+
+/// Fluxo do AGENDAMENTO (a loja ainda não entrega, só retirada):
+/// AWAITING_PAYMENT -> PAYMENT_CONFIRMED -> SCHEDULED -> PREPARING -> READY
+///   -> PICKED_UP
+///
+/// OUT_FOR_DELIVERY e DELIVERED continuam existindo para o dia em que a
+/// entrega for ligada — o enum não muda quando isso acontecer, só a
+/// configuração. RECEIVED é mantido pelos pedidos antigos do histórico.
+/// CANCELLED pode ocorrer a partir de qualquer estado não-final.
+enum OrderStatus {
+  AWAITING_PAYMENT
+  PAYMENT_CONFIRMED
+  SCHEDULED
+  RECEIVED
+  PREPARING
+  READY
+  OUT_FOR_DELIVERY
+  DELIVERED
+  PICKED_UP
+  CANCELLED
+}
+
+enum DiscountType {
+  PERCENT // valor em pontos percentuais (10 = 10%)
+  FIXED // valor fixo em centavos
+}
+
+enum NotificationChannel {
+  IN_APP
+  EMAIL
+  WHATSAPP
+  PUSH
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  FAILED
+  SKIPPED
+}
+
+// --------------------------------- Usuários --------------------------------
+
+model User {
+  id    String @id @default(cuid())
+  name  String
+  email String @unique
+  phone String
+
+  /// Identificador da credencial no provedor de identidade.
+  ///
+  /// Com o Supabase Auth é o UUID de auth.users; com o provedor local é o
+  /// próprio id desta linha. É por este campo que a sessão encontra o
+  /// cliente, e não pelo e-mail: e-mail muda, identidade não.
+  authUserId String? @unique @map("auth_user_id")
+
+  /// Hash scrypt da senha — SOMENTE no provedor local.
+  ///
+  /// Nulo quando quem guarda a credencial é o Supabase Auth: a senha nunca
+  /// passa por este banco. Nunca é exposto por nenhuma rota.
+  passwordHash String? @map("password_hash")
+
+  role      Role     @default(CUSTOMER)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  addresses           Address[]
+  orders              Order[]
+  sessions            Session[]
+  passwordResetTokens PasswordResetToken[]
+  notifications       Notification[]
+  auditLogs           AuditLog[]
+
+  @@index([role])
+  @@index([createdAt])
+  @@map("users")
+}
+
+model Address {
+  id           String   @id @default(cuid())
+  userId       String   @map("user_id")
+  label        String   @default("Casa")
+  street       String
+  number       String
+  complement   String?
+  neighborhood String
+  city         String
+  state        String   @db.VarChar(2)
+  postalCode   String   @map("postal_code")
+  reference    String?
+  isDefault    Boolean  @default(false) @map("is_default")
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orders Order[]
+
+  @@index([userId])
+  @@map("addresses")
+}
+
+/// Sessão persistida no banco. O cookie guarda apenas um token opaco;
+/// no banco fica somente o hash SHA-256 desse token.
+model Session {
+  id         String   @id @default(cuid())
+  userId     String   @map("user_id")
+  tokenHash  String   @unique @map("token_hash")
+  csrfSecret String   @map("csrf_secret")
+  userAgent  String?  @map("user_agent")
+  ip         String?
+  expiresAt  DateTime @map("expires_at")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("sessions")
+}
+
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String    @map("user_id")
+  tokenHash String    @unique @map("token_hash")
+  expiresAt DateTime  @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("password_reset_tokens")
+}
+
+// --------------------------------- Cardápio --------------------------------
+
+model Category {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  slug      String   @unique
+  position  Int      @default(0)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  products Product[]
+
+  @@map("categories")
+}
+
+model Product {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  description String   @default("")
+  /// Preço em CENTAVOS. R$ 8,00 => 800
+  priceCents  Int      @map("price_cents")
+  categoryId  String   @map("category_id")
+  imageUrl    String?  @map("image_url")
+  available   Boolean  @default(true)
+  /// Soft delete: produtos já vendidos nunca são removidos de verdade.
+  active      Boolean  @default(true)
+  position    Int      @default(0)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  category Category    @relation(fields: [categoryId], references: [id])
+  items    OrderItem[]
+
+  @@index([categoryId])
+  @@index([active, available])
+  @@map("products")
+}
+
+// --------------------------------- Pedidos ---------------------------------
+
+model Order {
+  id     String @id @default(cuid())
+  /// Número sequencial legível exibido ao cliente (#000123)
+  number Int    @unique @default(autoincrement())
+
+  userId String @map("user_id")
+
+  status        OrderStatus   @default(AWAITING_PAYMENT)
+  paymentStatus PaymentStatus @default(PENDING) @map("payment_status")
+  paymentMethod PaymentMethod @map("payment_method")
+  deliveryType  DeliveryType  @map("delivery_type")
+
+  // Todos os valores em centavos, calculados SEMPRE no servidor.
+  subtotalCents    Int @map("subtotal_cents")
+  deliveryFeeCents Int @default(0) @map("delivery_fee_cents")
+  discountCents    Int @default(0) @map("discount_cents")
+  totalCents       Int @map("total_cents")
+
+  /// Quanto o cliente vai entregar em dinheiro (para calcular o troco)
+  changeForCents Int? @map("change_for_cents")
+
+  /// Horário combinado para a retirada.
+  ///
+  /// É o coração do agendamento: o cliente escolhe a hora, o servidor
+  /// confere se cai dentro do expediente e se ainda há vaga na janela.
+  /// Nulo apenas nos pedidos antigos, criados antes do agendamento existir.
+  scheduledFor DateTime? @map("scheduled_for")
+
+  couponId   String? @map("coupon_id")
+  couponCode String? @map("coupon_code")
+
+  addressId       String? @map("address_id")
+  // Snapshot do endereço: o pedido não muda se o cliente editar o endereço depois.
+  addressSnapshot Json?   @map("address_snapshot")
+
+  customerName  String  @map("customer_name")
+  customerPhone String  @map("customer_phone")
+  notes         String?
+
+  /// Chave de idempotência enviada pelo cliente ao criar o pedido.
+  idempotencyKey String? @unique @map("idempotency_key")
+
+  estimatedMinutes Int?      @map("estimated_minutes")
+  paidAt           DateTime? @map("paid_at")
+  cancelledAt      DateTime? @map("cancelled_at")
+  cancelReason     String?   @map("cancel_reason")
+  completedAt      DateTime? @map("completed_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user          User                 @relation(fields: [userId], references: [id])
+  address       Address?             @relation(fields: [addressId], references: [id])
+  coupon        Coupon?              @relation(fields: [couponId], references: [id])
+  items         OrderItem[]
+  payments      Payment[]
+  statusHistory OrderStatusHistory[]
+  notifications Notification[]
+
+  @@index([userId])
+  @@index([status])
+  @@index([paymentStatus])
+  @@index([createdAt])
+  // A agenda do dia e a contagem de capacidade por janela consultam por
+  // scheduledFor + status, então o índice composto cobre as duas.
+  @@index([scheduledFor, status])
+  @@map("orders")
+}
+
+model OrderItem {
+  id        String @id @default(cuid())
+  orderId   String @map("order_id")
+  productId String @map("product_id")
+
+  /// SNAPSHOT — nome e preço no momento da compra.
+  productNameSnapshot String @map("product_name_snapshot")
+  unitPriceCents      Int    @map("unit_price_cents")
+  quantity            Int
+  subtotalCents       Int    @map("subtotal_cents")
+
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id])
+
+  @@index([orderId])
+  @@index([productId])
+  @@map("order_items")
+}
+
+model OrderStatusHistory {
+  id        String       @id @default(cuid())
+  orderId   String       @map("order_id")
+  from      OrderStatus?
+  to        OrderStatus
+  changedBy String?      @map("changed_by")
+  note      String?
+  createdAt DateTime     @default(now()) @map("created_at")
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@map("order_status_history")
+}
+
+// -------------------------------- Pagamentos -------------------------------
+
+model Payment {
+  id      String @id @default(cuid())
+  orderId String @map("order_id")
+
+  /// Identificador do gateway: "mercadopago" | "stripe" | "asaas" | "pagbank" | "manual"
+  provider          String
+  providerPaymentId String?       @map("provider_payment_id")
+  method            PaymentMethod
+  /// Valor em centavos
+  amountCents       Int           @map("amount_cents")
+  status            PaymentStatus @default(PENDING)
+
+  // Dados do PIX devolvidos pelo gateway (nunca contêm segredos).
+  pixQrCode       String? @map("pix_qr_code") @db.Text
+  pixQrCodeBase64 String? @map("pix_qr_code_base64") @db.Text
+  checkoutUrl     String? @map("checkout_url")
+
+  expiresAt  DateTime? @map("expires_at")
+  paidAt     DateTime? @map("paid_at")
+  rawPayload Json?     @map("raw_payload")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerPaymentId])
+  @@index([orderId])
+  @@index([status])
+  @@map("payments")
+}
+
+/// Registro de eventos de webhook já processados — garante IDEMPOTÊNCIA:
+/// o mesmo evento entregue duas vezes não confirma o pagamento duas vezes.
+model WebhookEvent {
+  id          String   @id @default(cuid())
+  provider    String
+  eventId     String   @map("event_id")
+  eventType   String?  @map("event_type")
+  payload     Json
+  processedAt DateTime @default(now()) @map("processed_at")
+
+  @@unique([provider, eventId])
+  @@map("webhook_events")
+}
+
+// ---------------------------------- Cupons ---------------------------------
+
+model Coupon {
+  id               String       @id @default(cuid())
+  code             String       @unique
+  description      String       @default("")
+  discountType     DiscountType @map("discount_type")
+  /// PERCENT: pontos percentuais (10 = 10%). FIXED: centavos (500 = R$ 5,00).
+  discountValue    Int          @map("discount_value")
+  /// Valor mínimo do pedido em centavos para o cupom valer.
+  minOrderCents    Int          @default(0) @map("min_order_cents")
+  /// Teto do desconto em centavos (apenas para PERCENT). 0 = sem teto.
+  maxDiscountCents Int          @default(0) @map("max_discount_cents")
+  startsAt         DateTime?    @map("starts_at")
+  expiresAt        DateTime?    @map("expires_at")
+  usageLimit       Int?         @map("usage_limit")
+  usageCount       Int          @default(0) @map("usage_count")
+  perUserLimit     Int?         @map("per_user_limit")
+  active           Boolean      @default(true)
+  createdAt        DateTime     @default(now()) @map("created_at")
+  updatedAt        DateTime     @updatedAt @map("updated_at")
+
+  orders Order[]
+
+  @@map("coupons")
+}
+
+// ------------------------------- Notificações ------------------------------
+
+model Notification {
+  id        String              @id @default(cuid())
+  userId    String              @map("user_id")
+  orderId   String?             @map("order_id")
+  channel   NotificationChannel @default(IN_APP)
+  status    NotificationStatus  @default(PENDING)
+  title     String
+  body      String
+  /// Evento que gerou a notificação (ex.: "order.status.PREPARING")
+  event     String
+  readAt    DateTime?           @map("read_at")
+  sentAt    DateTime?           @map("sent_at")
+  error     String?
+  createdAt DateTime            @default(now()) @map("created_at")
+
+  user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  order Order? @relation(fields: [orderId], references: [id], onDelete: SetNull)
+
+  @@index([userId, readAt])
+  @@index([orderId])
+  @@map("notifications")
+}
+
+// ----------------------- Configurações do estabelecimento -------------------
+
+/// Linha única (id = "default") com as configurações editáveis pelo admin.
+/// NENHUM valor de negócio (taxa de entrega, pedido mínimo...) fica no código.
+model Settings {
+  id String @id @default("default")
+
+  storeName String  @default("DS Espetos") @map("store_name")
+  logoUrl   String? @map("logo_url")
+  phone     String  @default("")
+  whatsapp  String  @default("")
+  email     String  @default("")
+
+  addressStreet       String @default("") @map("address_street")
+  addressNumber       String @default("") @map("address_number")
+  addressNeighborhood String @default("") @map("address_neighborhood")
+  addressCity         String @default("") @map("address_city")
+  addressState        String @default("") @map("address_state")
+  addressPostalCode   String @default("") @map("address_postal_code")
+
+  /// Horário de funcionamento por dia da semana (0=domingo … 6=sábado):
+  /// [{ "weekday": 0, "open": "18:00", "close": "23:00", "closed": false }, ...]
+  openingHours Json @map("opening_hours")
+
+  /// Sobrepõe o horário: quando false, a loja aparece FECHADA mesmo dentro do horário.
+  manualOpen      Boolean @default(true) @map("manual_open")
+  /// Quando true, o horário é ignorado e vale apenas `manualOpen`.
+  useManualSwitch Boolean @default(false) @map("use_manual_switch")
+
+  // ------------------------------ agendamento -------------------------------
+  /// Antecedência mínima, em minutos, entre agendar e retirar.
+  /// Ninguém agenda para "agora": a cozinha precisa de tempo.
+  minLeadMinutes Int @default(30) @map("min_lead_minutes")
+
+  /// Tamanho da janela, em minutos, usada para contar a capacidade.
+  /// Com 30, os horários 19:00, 19:10 e 19:25 caem na mesma janela.
+  slotWindowMinutes Int @default(30) @map("slot_window_minutes")
+
+  /// Quantos agendamentos cabem em cada janela. 0 = sem limite.
+  slotCapacity Int @default(0) @map("slot_capacity")
+
+  /// Quantos dias à frente o cliente pode agendar.
+  /// 0 = somente hoje (é como a DS Espetos opera hoje).
+  scheduleHorizonDays Int @default(0) @map("schedule_horizon_days")
+
+  deliveryFeeCents       Int @default(0) @map("delivery_fee_cents")
+  minOrderCents          Int @default(0) @map("min_order_cents")
+  freeDeliveryAboveCents Int @default(0) @map("free_delivery_above_cents")
+  prepTimeMinutes        Int @default(30) @map("prep_time_minutes")
+  deliveryTimeMinutes    Int @default(20) @map("delivery_time_minutes")
+
+  acceptPix     Boolean @default(true) @map("accept_pix")
+  acceptCard    Boolean @default(true) @map("accept_card")
+  acceptCash    Boolean @default(true) @map("accept_cash")
+  /// A DS Espetos ainda não entrega. O campo continua existindo para o dia
+  /// em que passar a entregar: é só ligar aqui, sem mexer em código.
+  allowDelivery Boolean @default(false) @map("allow_delivery")
+  allowPickup   Boolean @default(true) @map("allow_pickup")
+
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  deliveryAreas DeliveryArea[]
+
+  @@map("settings")
+}
+
+/// Bairros/áreas atendidas, cada uma com sua própria taxa e tempo estimado.
+model DeliveryArea {
+  id            String   @id @default(cuid())
+  settingsId    String   @default("default") @map("settings_id")
+  neighborhood  String
+  city          String   @default("")
+  feeCents      Int      @map("fee_cents")
+  minOrderCents Int      @default(0) @map("min_order_cents")
+  etaMinutes    Int      @default(30) @map("eta_minutes")
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  settings Settings @relation(fields: [settingsId], references: [id], onDelete: Cascade)
+
+  @@unique([settingsId, neighborhood, city])
+  @@map("delivery_areas")
+}
+
+// ------------------------------- Auditoria/logs -----------------------------
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?  @map("user_id")
+  action    String
+  entity    String?
+  entityId  String?  @map("entity_id")
+  ip        String?
+  metadata  Json?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+/// Rate limiting persistente (funciona mesmo com múltiplas instâncias).
+model RateLimit {
+  key       String   @id
+  count     Int      @default(0)
+  expiresAt DateTime @map("expires_at")
+
+  @@index([expiresAt])
+  @@map("rate_limits")
+}

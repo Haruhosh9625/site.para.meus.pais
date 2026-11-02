@@ -20,6 +20,37 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
   serverExternalPackages: ["@prisma/client"],
+  /*
+    A rota de upload grava em `resolve(process.cwd(), UPLOAD_DIR)`, com o
+    diretório vindo do ambiente. Sem saber o caminho, o rastreador de
+    arquivos do Next.js inclui o projeto inteiro no pacote dessa função:
+    .git, as skills do agente, o código-fonte e até arquivos que o próprio
+    build apaga no fim, como .next/export-detail.json.
+
+    Esse último derrubava o deploy na Vercel. O build terminava bem, e o
+    empacotamento quebrava com "ENOENT: lstat .next/export-detail.json",
+    porque a Vercel confere cada arquivo rastreado e ele já não existia.
+
+    A rota não precisa de nada disto em tempo de execução: só do próprio
+    código compilado e das dependências, que continuam incluídos.
+  */
+  outputFileTracingExcludes: {
+    "/api/admin/uploads": [
+      "./.git/**/*",
+      "./.claude/**/*",
+      "./src/**/*",
+      "./scripts/**/*",
+      "./prisma/**/*",
+      "./skills-lock.json",
+      "./.next/static/**/*",
+      "./.next/cache/**/*",
+      "./.next/types/**/*",
+      "./.next/diagnostics/**/*",
+      "./.next/export-detail.json",
+      "./.next/lock",
+      "./.next/trace",
+    ],
+  },
   images: {
     formats: ["image/avif", "image/webp"],
     remotePatterns: [{ protocol: "https", hostname: "**" }],
